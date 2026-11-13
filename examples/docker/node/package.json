@@ -1,0 +1,1 @@
+{"name":"authgo-docker-example","private":true,"type":"module","dependencies":{"authgo":"file:../../../sdk/node"}}

@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <UseAppHost>false</UseAppHost>
+  </PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../../../sdk/csharp/AuthGo/AuthGo.csproj" /></ItemGroup>
+</Project>

@@ -1,0 +1,12 @@
+**
+!sdk/
+!sdk/go/
+!sdk/go/**
+!pack/
+!pack/**
+**/*_test.go
+**/bin
+**/target
+**/*.cache
+**/reports
+**/.git

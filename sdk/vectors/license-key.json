@@ -1,0 +1,102 @@
+{
+  "v": 1,
+  "alphabet": "23456789ABCDEFGHJKLMNPQRSTUVWXYZ",
+  "cases": [
+    {
+      "name": "valid",
+      "key": "AUTH-23456-789AB-CDEFG-HJKLT",
+      "valid": true,
+      "code": "OK"
+    },
+    {
+      "name": "short_prefix",
+      "key": "2-23456-789AB-CDEFG-HJKLW",
+      "valid": true,
+      "code": "OK"
+    },
+    {
+      "name": "max_prefix",
+      "key": "AAAAAAAAAAAAAAAA-23456-789AB-CDEFG-HJKLD",
+      "valid": true,
+      "code": "OK"
+    },
+    {
+      "name": "segments",
+      "key": "abc",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "missing_segment",
+      "key": "AUTH-23456-789AB-CDEFG",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "extra_segment",
+      "key": "AUTH-23456-789AB-CDEFG-HJKLT-23456",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "empty_prefix",
+      "key": "-23456-789AB-CDEFG-HJKLT",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "long_prefix",
+      "key": "AAAAAAAAAAAAAAAAA-23456-789AB-CDEFG-HJKLD",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "short_group",
+      "key": "AUTH-2345-789AB-CDEFG-HJKLT",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "long_group",
+      "key": "AUTH-234567-789AB-CDEFG-HJKLT",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "invalid_0",
+      "key": "AUTH-03456-789AB-CDEFG-HJKLT",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "invalid_I",
+      "key": "AUTH-I3456-789AB-CDEFG-HJKLT",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "lowercase",
+      "key": "auth-23456-789ab-cdefg-hjklt",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "whitespace",
+      "key": " AUTH-23456-789AB-CDEFG-HJKLT",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "unicode",
+      "key": "中UTH-23456-789AB-CDEFG-HJKLT",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    },
+    {
+      "name": "checksum",
+      "key": "AUTH-23456-789AB-CDEFG-HJKL2",
+      "valid": false,
+      "code": "INVALID_LICENSE_KEY"
+    }
+  ]
+}

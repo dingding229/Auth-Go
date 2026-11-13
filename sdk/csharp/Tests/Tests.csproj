@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup><ItemGroup><ProjectReference Include="../AuthGo/AuthGo.csproj" /></ItemGroup><ItemGroup>
+<Compile Remove="Fixtures/**/*.cs" />
+<ProjectReference Include="Fixtures/Main/Main.csproj" ReferenceOutputAssembly="false" />
+<ProjectReference Include="Fixtures/Native/Native.csproj" ReferenceOutputAssembly="false" />
+</ItemGroup>
+<Target Name="CopySealedFixtures" AfterTargets="Build">
+<MakeDir Directories="$(OutDir)fixtures" />
+<Copy SourceFiles="$(MSBuildProjectDirectory)/Fixtures/Main/bin/$(Configuration)/net8.0/AuthGoSealedMain.dll;$(MSBuildProjectDirectory)/Fixtures/Main/bin/$(Configuration)/net8.0/AuthGoSealedMain.deps.json;$(MSBuildProjectDirectory)/Fixtures/Main/bin/$(Configuration)/net8.0/AuthGoSealedDependency.dll;$(MSBuildProjectDirectory)/Fixtures/Native/bin/$(Configuration)/net8.0/AuthGoSealedNative.dll" DestinationFolder="$(OutDir)fixtures" />
+</Target>
+</Project>

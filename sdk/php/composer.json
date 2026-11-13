@@ -1,0 +1,1 @@
+{"name":"authgo/sdk","description":"Auth Go 官方 PHP SDK（本仓库安装）","type":"library","require":{"php":">=8.1","ext-sodium":"*","ext-openssl":"*"},"autoload":{"psr-4":{"AuthGo\\":"src/"},"files":["src/Client.php"]},"version":"1.0.0"}

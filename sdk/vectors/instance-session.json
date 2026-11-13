@@ -1,0 +1,88 @@
+{
+  "v": 1,
+  "instance_session": {
+    "encoding": "Base64URL-without-padding",
+    "bytes": 16,
+    "valid": "AAAAAAAAAAAAAAAAAAAAAA",
+    "invalid": [
+      "x",
+      "AAAAAAAAAAAAAAAAAAAAAAA="
+    ],
+    "persist_in_cache": false
+  },
+  "floating_cases": [
+    {
+      "name": "expired_lease_inside_grace",
+      "fault": "transport",
+      "now": 105,
+      "lease_expires_at": 104,
+      "grace_until": 3600,
+      "expires_at": 7200,
+      "expected": "grace",
+      "offline": true,
+      "features": true
+    },
+    {
+      "name": "grace_end",
+      "fault": "transport",
+      "now": 3600,
+      "lease_expires_at": 104,
+      "grace_until": 3600,
+      "expires_at": 7200,
+      "expected": "SDK_GRACE_EXPIRED"
+    },
+    {
+      "name": "expiry_wins",
+      "fault": "transport",
+      "now": 200,
+      "lease_expires_at": 104,
+      "grace_until": 3600,
+      "expires_at": 200,
+      "expected": "LICENSE_EXPIRED"
+    },
+    {
+      "name": "zero_grace",
+      "fault": "transport",
+      "now": 100,
+      "lease_expires_at": 104,
+      "grace_until": 100,
+      "expires_at": 7200,
+      "expected": "SDK_GRACE_EXPIRED"
+    },
+    {
+      "name": "online_expired_lease",
+      "fault": null,
+      "now": 105,
+      "lease_expires_at": 104,
+      "grace_until": 3600,
+      "expires_at": 7200,
+      "expected": "LEASE_EXPIRED"
+    }
+  ],
+  "version_disabled": {
+    "code": "VERSION_DISABLED",
+    "data": {
+      "latest_version": "2.1.0"
+    },
+    "clear_cache": true
+  },
+  "release": {
+    "op": "release-seat",
+    "data": {
+      "released": true
+    },
+    "clear_cache": false
+  },
+  "conformance_cases": [
+    "floating_outage_after_lease",
+    "floating_grace_expired",
+    "floating_grace_zero",
+    "floating_expiry_priority",
+    "floating_heartbeat_reacquire_or_full",
+    "instance_session_takeover",
+    "instance_replaced_no_cache_clear",
+    "release_seat_preserves_cache",
+    "release_seat_key_only_noop",
+    "disabled_version_latest_and_update"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "canonical": "{\"features\":{\"decimal\":1.2300e+2,\"large\":18446744073709551615},\"z\":\"\\u003cscript\\u003e \\u0026 中文\\u2028\",\"�\":2,\"😀\":1}",
+  "invalid": [
+    "{\"x\":1,\"x\":2}",
+    "{\"x\":\"\\ud800\"}",
+    "{\"x\":NaN}",
+    "{} {}"
+  ],
+  "public_key": "Md6+VdN8cidosTcTHKpghwgLLgtguUvXhdFFdc+kmLw=",
+  "raw": "{\"z\":\"\u003cscript\u003e \u0026 中文\\u2028\",\"features\":{\"large\":18446744073709551615,\"decimal\":1.2300e+2},\"😀\":1,\"\\ufffd\":2}",
+  "signature": "308WCdDvu2qKvenE53KLw8SrWMh4Bq15q8gTK+P6BToydxHAODLr/9pT1zOC6hXUNGER1QXJFvBkVQv5yY0CDA==",
+  "warning": "TEST KEYS ONLY"
+}

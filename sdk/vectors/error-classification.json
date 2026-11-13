@@ -1,0 +1,297 @@
+{
+  "v": 1,
+  "rule": "For authorization actions only: only a fully authenticated non-OK code outside the temporary allowlist is a refusal; unknown authenticated codes refuse. update.check never mutates licensing tickets, cache or Refused, regardless of error/authentication; return the original error.",
+  "temporary_codes": [
+    "INTERNAL_ERROR",
+    "RATE_LIMITED",
+    "REPLAY_DETECTED",
+    "TIMESTAMP_INVALID",
+    "SIGNATURE_INVALID",
+    "INVALID_REQUEST",
+    "PAYLOAD_INVALID"
+  ],
+  "cases": [
+    {
+      "authenticated": true,
+      "code": "INTERNAL_ERROR",
+      "class": "temporary",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "RATE_LIMITED",
+      "class": "temporary",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "REPLAY_DETECTED",
+      "class": "temporary",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "TIMESTAMP_INVALID",
+      "class": "temporary",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "SIGNATURE_INVALID",
+      "class": "temporary",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "INVALID_REQUEST",
+      "class": "temporary",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "LICENSE_REVOKED",
+      "class": "refusal",
+      "clear_cache": true
+    },
+    {
+      "authenticated": true,
+      "code": "LICENSE_SUSPENDED",
+      "class": "refusal",
+      "clear_cache": true
+    },
+    {
+      "authenticated": true,
+      "code": "USER_DISABLED",
+      "class": "refusal",
+      "clear_cache": true
+    },
+    {
+      "authenticated": true,
+      "code": "UNKNOWN_AUTHENTICATED_ERROR",
+      "class": "refusal",
+      "clear_cache": true
+    },
+    {
+      "authenticated": false,
+      "code": "SDK_NETWORK_ERROR",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": false,
+      "code": "SDK_RESPONSE_INVALID",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": false,
+      "code": "SDK_RESPONSE_SIGNATURE_INVALID",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": false,
+      "code": "SDK_RESPONSE_NONCE_INVALID",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": false,
+      "code": "SDK_RESPONSE_TIMESTAMP_INVALID",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": false,
+      "code": "LICENSE_REVOKED",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "SDK_RESPONSE_SIGNATURE_INVALID",
+      "class": "refusal",
+      "clear_cache": true
+    },
+    {
+      "authenticated": false,
+      "code": "INTERNAL_ERROR",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "VERSION_DISABLED",
+      "class": "refusal",
+      "clear_cache": true
+    },
+    {
+      "authenticated": true,
+      "code": "MAINTENANCE_EXPIRED",
+      "class": "refusal",
+      "clear_cache": true
+    },
+    {
+      "authenticated": false,
+      "code": "MAINTENANCE_EXPIRED",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "TRIAL_DISABLED",
+      "class": "refusal",
+      "clear_cache": true
+    },
+    {
+      "authenticated": false,
+      "code": "TRIAL_DISABLED",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "TRIAL_IP_LIMIT",
+      "class": "refusal",
+      "clear_cache": true
+    },
+    {
+      "authenticated": false,
+      "code": "TRIAL_IP_LIMIT",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "TRIAL_QUOTA_EXCEEDED",
+      "class": "refusal",
+      "clear_cache": true
+    },
+    {
+      "authenticated": false,
+      "code": "TRIAL_QUOTA_EXCEEDED",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "PAYLOAD_INVALID",
+      "class": "temporary",
+      "clear_cache": false
+    },
+    {
+      "authenticated": false,
+      "code": "PAYLOAD_INVALID",
+      "class": "connection_failure",
+      "clear_cache": false
+    },
+    {
+      "authenticated": true,
+      "code": "VERSION_NOT_ALLOWED",
+      "class": "refusal",
+      "clear_cache": true
+    }
+  ],
+  "update_cases": [
+    {
+      "op": "update.check",
+      "authenticated": true,
+      "code": "LICENSE_REVOKED",
+      "clear_cache": false
+    },
+    {
+      "op": "update.check",
+      "authenticated": true,
+      "code": "UNKNOWN_AUTHENTICATED_ERROR",
+      "clear_cache": false
+    },
+    {
+      "op": "update.check",
+      "authenticated": true,
+      "code": "VERSION_NOT_FOUND",
+      "clear_cache": false
+    },
+    {
+      "op": "update.check",
+      "authenticated": true,
+      "code": "MAINTENANCE_EXPIRED",
+      "clear_cache": false
+    },
+    {
+      "op": "update.check",
+      "authenticated": true,
+      "code": "VERSION_NOT_ALLOWED",
+      "clear_cache": false
+    },
+    {
+      "op": "update.check",
+      "authenticated": true,
+      "code": "APP_DISABLED",
+      "clear_cache": false
+    },
+    {
+      "op": "update.check",
+      "authenticated": true,
+      "code": "USER_DISABLED",
+      "clear_cache": false
+    },
+    {
+      "op": "update.check",
+      "authenticated": true,
+      "code": "INSTANCE_REPLACED",
+      "clear_cache": false
+    },
+    {
+      "op": "update.check",
+      "authenticated": true,
+      "code": "INTERNAL_ERROR",
+      "clear_cache": false
+    },
+    {
+      "op": "update.check",
+      "authenticated": true,
+      "code": "RATE_LIMITED",
+      "clear_cache": false
+    }
+  ],
+  "instance_cases": [
+    {
+      "authenticated": true,
+      "code": "INSTANCE_REPLACED",
+      "class": "refusal",
+      "clear_cache": false,
+      "allow_grace": false,
+      "process_stops": true
+    },
+    {
+      "authenticated": false,
+      "code": "INSTANCE_REPLACED",
+      "class": "untrusted",
+      "clear_cache": false,
+      "allow_grace": true
+    }
+  ],
+  "release_cases": [
+    {
+      "code": "OK",
+      "clear_cache": false,
+      "write_refused": false
+    },
+    {
+      "code": "INSTANCE_REPLACED",
+      "clear_cache": false,
+      "write_refused": false
+    },
+    {
+      "code": "LICENSE_REVOKED",
+      "clear_cache": true,
+      "write_refused": true
+    },
+    {
+      "code": "SDK_NETWORK_ERROR",
+      "clear_cache": false,
+      "write_refused": false
+    }
+  ],
+  "authorization_exception_rule": "INSTANCE_REPLACED is an authenticated explicit refusal and never falls back, but does not clear the cache or write Refused; the rejected process stops and may not reuse grace. release-seat success, transport faults and temporary errors preserve local authorization state; fully authenticated refusals clear it except INSTANCE_REPLACED."
+}

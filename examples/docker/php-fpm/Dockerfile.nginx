@@ -1,0 +1,5 @@
+FROM nginxinc/nginx-unprivileged:1.28.2-alpine
+COPY examples/docker/php-fpm/nginx.conf.template /app/nginx.conf
+USER 101:101
+EXPOSE 8080
+ENTRYPOINT ["nginx", "-c", "/app/nginx.conf", "-g", "daemon off;"]

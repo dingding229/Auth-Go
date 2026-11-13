@@ -1,0 +1,224 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: docker.io/dingding229/authgo
+
+# Serialize release tags; branches (including main) cancel superseded builds.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v') && 'publish' || github.ref }}
+  cancel-in-progress: ${{ !(github.event_name != 'pull_request' && startsWith(github.ref, 'refs/tags/v')) }}
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: |
+            server/go.sum
+            sdk/go/go.mod
+            examples/basic/go.mod
+            examples/docker/go.mod
+            examples/docker-protected/go/go.mod
+            pack/go.mod
+      - name: Check workflow publishing policy
+        run: python3 scripts/test-ci-workflow.py
+      - name: Check Go formatting
+        run: |
+          files=$(gofmt -l server sdk/go examples pack)
+          if [[ -n "$files" ]]; then
+            printf '以下 Go 文件需要 gofmt：\n%s\n' "$files"
+            exit 1
+          fi
+      - name: Build pack launchers
+        run: make build-stubs
+      - name: Build, vet and test every examples module
+        run: sh scripts/check-examples.sh
+      - name: Vet and test Go modules
+        run: |
+          for module in server sdk/go examples/basic pack; do
+            echo "::group::$module"
+            (
+              cd "$module"
+              go vet ./...
+              if [[ "$module" == pack ]]; then
+                GOMAXPROCS=2 go test -p 1 ./...
+              else
+                go test ./...
+              fi
+            )
+            echo '::endgroup::'
+          done
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # Each runner derives its own real Gin table from this exact checkout.
+      # No stale generated inventory or cross-runner hidden-file artifact.
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: Export real API routes for frontend contract tests
+        working-directory: server
+        run: go test -count=1 ./internal/httpserver -run '^TestExportFrontendRouteContract$'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx vue-tsc --noEmit
+      - run: npm test
+      - run: npm run build
+      - run: npm run test:dist
+
+  image:
+    needs: [go, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Select build and publishing policy
+        id: plan
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          publish=false
+          latest=false
+          stable='(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+          pre='(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
+          if [[ "$REF" == refs/tags/v* ]]; then
+            if [[ ! "$REF_NAME" =~ ^v${stable}(-${pre}(\.${pre})*)?$ ]]; then
+              echo '::error::无效发布标签：要求 vX.Y.Z 或 vX.Y.Z-预发布标识。' >&2
+              exit 1
+            fi
+          fi
+          platforms=linux/amd64
+          if [[ "$EVENT_NAME" != pull_request && ( "$REF" == refs/heads/main || "$REF" == refs/tags/v* ) ]]; then
+            platforms=linux/amd64,linux/arm64
+            if [[ "$REF" == refs/tags/v* ]]; then
+              publish=true
+              if [[ "$REF_NAME" =~ ^v${stable}$ ]]; then
+                latest=true
+              fi
+            fi
+          fi
+          version="sha-${COMMIT:0:7}"
+          if [[ "$REF_TYPE" == tag ]]; then
+            version="$REF_NAME"
+          fi
+          {
+            printf 'latest=%s\n' "$latest"
+            printf 'publish=%s\n' "$publish"
+            printf 'platforms=%s\n' "$platforms"
+            printf 'version=%s\n' "$version"
+            printf 'commit=%s\n' "$COMMIT"
+            printf 'build_time=%s\n' "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          } >> "$GITHUB_OUTPUT"
+      - name: Require Docker Hub credentials for publishing
+        id: credentials
+        if: steps.plan.outputs.publish == 'true'
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [[ -z "$DOCKERHUB_USERNAME" || -z "$DOCKERHUB_TOKEN" ]]; then
+            echo '::error::镜像发布失败：请在仓库 Secrets 配置 DOCKERHUB_USERNAME 和 DOCKERHUB_TOKEN（Docker Hub Read & Write 访问令牌）。' >&2
+            exit 1
+          fi
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - name: Image tags and labels
+        id: metadata
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=latest,enable=${{ steps.plan.outputs.latest == 'true' }}
+            type=raw,value=${{ github.ref_name }},enable=${{ steps.plan.outputs.publish == 'true' && steps.plan.outputs.latest != 'true' }}
+            type=semver,pattern={{version}},enable=${{ steps.plan.outputs.latest == 'true' }}
+      - name: Log in to Docker Hub
+        if: steps.plan.outputs.publish == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build image
+        id: image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ steps.plan.outputs.platforms }}
+          push: ${{ steps.plan.outputs.publish == 'true' }}
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.plan.outputs.version }}
+            COMMIT=${{ steps.plan.outputs.commit }}
+            BUILD_TIME=${{ steps.plan.outputs.build_time }}
+          cache-from: type=gha,scope=authgo-image
+          cache-to: type=gha,mode=max,scope=authgo-image
+          provenance: ${{ steps.plan.outputs.publish == 'true' }}
+          outputs: ${{ steps.plan.outputs.publish != 'true' && (contains(steps.plan.outputs.platforms, ',') && format('type=oci,dest={0}/authgo-image-multiarch.tar', runner.temp) || format('type=docker,dest={0}/authgo-image-amd64.tar', runner.temp)) || '' }}
+      - name: Verify published architectures
+        if: steps.plan.outputs.publish == 'true'
+        env:
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          docker buildx imagetools inspect "$IMAGE@$IMAGE_DIGEST"
+          docker buildx imagetools inspect "$IMAGE@$IMAGE_DIGEST" --raw > "$RUNNER_TEMP/authgo-manifest.json"
+          python3 - "$RUNNER_TEMP/authgo-manifest.json" <<'PY'
+          import json, sys
+          with open(sys.argv[1]) as source:
+              manifests = json.load(source)["manifests"]
+          actual = {(m.get("platform", {}).get("os"), m.get("platform", {}).get("architecture")) for m in manifests}
+          required = {("linux", "amd64"), ("linux", "arm64")}
+          if not required <= actual:
+              raise SystemExit("发布镜像缺少 linux/amd64 或 linux/arm64 架构")
+          print("发布架构确认：linux/amd64,linux/arm64")
+          PY
+      - name: Compress test image
+        if: steps.plan.outputs.publish != 'true'
+        env:
+          ARCHIVE: ${{ contains(steps.plan.outputs.platforms, ',') && 'authgo-image-multiarch' || 'authgo-image-amd64' }}
+        run: gzip -n "$RUNNER_TEMP/$ARCHIVE.tar"
+      - name: Upload test image
+        if: steps.plan.outputs.publish != 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ contains(steps.plan.outputs.platforms, ',') && 'authgo-image-multiarch' || 'authgo-image-amd64' }}
+          path: ${{ runner.temp }}/authgo-image-*.tar.gz
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error

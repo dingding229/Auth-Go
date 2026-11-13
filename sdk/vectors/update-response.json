@@ -1,0 +1,78 @@
+{
+  "canonical_signed": "{\"code\":\"OK\",\"data\":{\"available\":true,\"changelog\":\"测试更新，仅测试密钥\",\"docker_image\":\"org/app:2.0.0\",\"docker_pull\":\"docker pull org/app:2.0.0\",\"latest_entitled_version\":\"2.0.0\",\"maintenance_until\":null,\"mandatory\":true,\"published_at\":\"2026-11-05T00:00:00Z\",\"renewal_required\":false,\"request_nonce\":\"fixed-update-nonce-0123456789\",\"version\":\"2.0.0\"},\"ts\":1793836800}",
+  "docker_cases": [
+    {
+      "canonical_signed": "{\"code\":\"OK\",\"data\":{\"available\":true,\"changelog\":\"测试更新，仅测试密钥\",\"docker_image\":\"org/app:2.0.0\",\"docker_pull\":\"docker pull org/app:2.0.0\",\"latest_entitled_version\":\"1.0.0\",\"maintenance_until\":\"2026-11-01T00:00:00Z\",\"mandatory\":true,\"published_at\":\"2026-11-05T00:00:00Z\",\"renewal_required\":true,\"request_nonce\":\"fixed-update-nonce-0123456789\",\"version\":\"2.0.0\"},\"ts\":1793836800}",
+      "public_key": "Zs1gi5KLiOUODv6qM/rxxDzv4HKUsLh+n+CrpqPPdjM=",
+      "response": {
+        "code": "OK",
+        "data": {
+          "available": true,
+          "changelog": "测试更新，仅测试密钥",
+          "mandatory": true,
+          "published_at": "2026-11-05T00:00:00Z",
+          "request_nonce": "fixed-update-nonce-0123456789",
+          "version": "2.0.0",
+          "docker_image": "org/app:2.0.0",
+          "docker_pull": "docker pull org/app:2.0.0",
+          "maintenance_until": "2026-11-01T00:00:00Z",
+          "latest_entitled_version": "1.0.0",
+          "renewal_required": true
+        },
+        "message": "测试成功",
+        "nonce": "fixed-update-nonce-0123456789",
+        "signature": "xNrrR6tUAtQvKa5tuaY9KLTf+qpjl77WPEBAX1DSq9hyT7q/GHV+Rnlv6CKMdaHmQqq/ATxld37Jqli7y9cWBQ==",
+        "ts": 1793836800
+      },
+      "signature": "xNrrR6tUAtQvKa5tuaY9KLTf+qpjl77WPEBAX1DSq9hyT7q/GHV+Rnlv6CKMdaHmQqq/ATxld37Jqli7y9cWBQ=="
+    },
+    {
+      "canonical_signed": "{\"code\":\"OK\",\"data\":{\"available\":true,\"changelog\":\"测试更新，仅测试密钥\",\"docker_image\":\"org/app:2.0.0\",\"docker_pull\":\"docker pull org/app:2.0.0\",\"latest_entitled_version\":\"2.0.0\",\"maintenance_until\":null,\"mandatory\":true,\"published_at\":\"2026-11-05T00:00:00Z\",\"renewal_required\":false,\"request_nonce\":\"fixed-update-nonce-0123456789\",\"version\":\"2.0.0\"},\"ts\":1793836800}",
+      "public_key": "Zs1gi5KLiOUODv6qM/rxxDzv4HKUsLh+n+CrpqPPdjM=",
+      "response": {
+        "code": "OK",
+        "data": {
+          "available": true,
+          "changelog": "测试更新，仅测试密钥",
+          "mandatory": true,
+          "published_at": "2026-11-05T00:00:00Z",
+          "request_nonce": "fixed-update-nonce-0123456789",
+          "version": "2.0.0",
+          "docker_image": "org/app:2.0.0",
+          "docker_pull": "docker pull org/app:2.0.0",
+          "maintenance_until": null,
+          "latest_entitled_version": "2.0.0",
+          "renewal_required": false
+        },
+        "message": "测试成功",
+        "nonce": "fixed-update-nonce-0123456789",
+        "signature": "oQDH4SsDFMMti+uTUHRy3sZ2FnCZy4q54AUiyVE/CCbry70gSY03K/OK7RS98ivrPzx8eO4gZZ3+pHA78wzXBw==",
+        "ts": 1793836800
+      },
+      "signature": "oQDH4SsDFMMti+uTUHRy3sZ2FnCZy4q54AUiyVE/CCbry70gSY03K/OK7RS98ivrPzx8eO4gZZ3+pHA78wzXBw=="
+    }
+  ],
+  "public_key": "Zs1gi5KLiOUODv6qM/rxxDzv4HKUsLh+n+CrpqPPdjM=",
+  "response": {
+    "code": "OK",
+    "data": {
+      "available": true,
+      "changelog": "测试更新，仅测试密钥",
+      "mandatory": true,
+      "published_at": "2026-11-05T00:00:00Z",
+      "request_nonce": "fixed-update-nonce-0123456789",
+      "version": "2.0.0",
+      "docker_image": "org/app:2.0.0",
+      "docker_pull": "docker pull org/app:2.0.0",
+      "maintenance_until": null,
+      "latest_entitled_version": "2.0.0",
+      "renewal_required": false
+    },
+    "message": "测试成功",
+    "nonce": "fixed-update-nonce-0123456789",
+    "signature": "oQDH4SsDFMMti+uTUHRy3sZ2FnCZy4q54AUiyVE/CCbry70gSY03K/OK7RS98ivrPzx8eO4gZZ3+pHA78wzXBw==",
+    "ts": 1793836800
+  },
+  "signature": "oQDH4SsDFMMti+uTUHRy3sZ2FnCZy4q54AUiyVE/CCbry70gSY03K/OK7RS98ivrPzx8eO4gZZ3+pHA78wzXBw==",
+  "warning": "TEST KEYS ONLY; Ed25519 seed = 32 bytes of 0x13"
+}

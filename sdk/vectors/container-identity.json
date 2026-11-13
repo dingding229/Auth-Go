@@ -1,0 +1,103 @@
+{
+  "v": 1,
+  "detection": [
+    {
+      "name": "host",
+      "env": {},
+      "files": {},
+      "expected": false
+    },
+    {
+      "name": "docker-file",
+      "env": {},
+      "files": {
+        "/.dockerenv": ""
+      },
+      "expected": true
+    },
+    {
+      "name": "podman-file",
+      "env": {},
+      "files": {
+        "/run/.containerenv": ""
+      },
+      "expected": true
+    },
+    {
+      "name": "force-off",
+      "env": {
+        "AUTHGO_CONTAINER": "0"
+      },
+      "files": {
+        "/.dockerenv": ""
+      },
+      "expected": false
+    },
+    {
+      "name": "force-on",
+      "env": {
+        "AUTHGO_CONTAINER": "1"
+      },
+      "files": {},
+      "expected": true
+    },
+    {
+      "name": "docker-cgroup",
+      "env": {},
+      "files": {
+        "/proc/1/cgroup": "0::/system.slice/docker-123.scope\n"
+      },
+      "expected": true
+    },
+    {
+      "name": "containerd-cgroup",
+      "env": {},
+      "files": {
+        "/proc/1/cgroup": "0::/system.slice/containerd-123.scope\n"
+      },
+      "expected": true
+    },
+    {
+      "name": "kubepods-cgroup",
+      "env": {},
+      "files": {
+        "/proc/1/cgroup": "0::/system.slice/kubepods-123.scope\n"
+      },
+      "expected": true
+    },
+    {
+      "name": "libpod-cgroup",
+      "env": {},
+      "files": {
+        "/proc/1/cgroup": "0::/system.slice/libpod-123.scope\n"
+      },
+      "expected": true
+    }
+  ],
+  "fingerprints": [
+    {
+      "id": "0000000000000000000000000000000000000000000000000000000000000000",
+      "expected": "b697640bd85e3e3be1d0f24a8e81b9236ebc218033cc381c915e6884dc6150e8"
+    },
+    {
+      "id": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "expected": "e199de977e8300639feb724444ee5984d9c4f0d379c0be1630ccb43f5f2ebdd3"
+    },
+    {
+      "id": "customer-instance-01",
+      "expected": "eec27c3c4f444cd7e33bee3f36a033c454ca995107b0abebe432b384b235c1cc"
+    },
+    {
+      "id": "实例-甲",
+      "expected": "d2730d2fd23dc9d34e3194891f7772fe6c2968278b7ff550d6fb54fb333875d2"
+    },
+    {
+      "id": " ID With Spaces ",
+      "expected": "7419dcbf71b1ffc31449707397568782f4918da7945abae8d79a3fd2d51c7768"
+    },
+    {
+      "id": "0",
+      "expected": "46339ee919e476d1d2876992f60213ff322869cb41bff8a8154ad6b343cd66bc"
+    }
+  ]
+}

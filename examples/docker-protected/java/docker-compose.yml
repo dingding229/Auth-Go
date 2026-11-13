@@ -1,0 +1,25 @@
+services:
+  app:
+    image: authgo-protected-java-example:local
+    build:
+      context: ../../..
+      dockerfile: examples/docker-protected/java/Dockerfile
+      args:
+        AUTHGO_TOOLS_IMAGE: ${AUTHGO_TOOLS_IMAGE:?set a valid tools image:tag}
+        PAYLOAD_PUBLIC_KEY: ${PAYLOAD_PUBLIC_KEY:?set payload public key}
+        PAYLOAD_KEY_ID: ${PAYLOAD_KEY_ID:?set payload key ID}
+        PAYLOAD_APP_KEY: ${PAYLOAD_APP_KEY:?set payload app key}
+        AUTHGO_CONFIG: ${AUTHGO_CONFIG:?set build-time pinned config}
+        VERSION: ${VERSION:-1.0.0}
+    environment:
+      AUTHGO_LICENSE: ${AUTHGO_LICENSE:-}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    stop_grace_period: 20s
+    tmpfs: [/tmp:rw,noexec,nosuid,size=16m]
+    volumes: [authgo_cache:/var/lib/authgo]
+    ports: [127.0.0.1:8090:8080]
+volumes:
+  authgo_cache:

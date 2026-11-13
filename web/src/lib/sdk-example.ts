@@ -1,0 +1,2 @@
+export const minimalGoExample =
+  'package main\n\nimport (\n\t"context"\n\t"log"\n\t"os"\n\n\tsdk "authgo/sdk"\n)\n\n// 由开发者在构建时写入；不得从环境变量或文件读取配置。\nconst authConfig = "authgo2.请在构建时替换为后台接入配置"\n\nfunc main() {\n\tclient, err := sdk.New(authConfig)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tresult, err := client.Check(context.Background(), os.Getenv("AUTHGO_LICENSE"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tlog.Printf("授权状态：%s，离线：%t", result.Status, result.Offline)\n}\n';

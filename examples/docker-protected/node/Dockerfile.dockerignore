@@ -1,0 +1,17 @@
+# Customer programs need their SDK and example sources, not server build context.
+**
+!sdk/
+!sdk/**
+!examples/
+!examples/**
+**/*_test.go
+**/test
+**/tests
+**/bin
+**/obj
+**/target
+**/node_modules
+**/__pycache__
+**/*.cache
+**/*.lic
+**/.git
