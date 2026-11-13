@@ -1,0 +1,58 @@
+name: 发布 Docker 镜像
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号，例如 1.0.0'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: authgo-publish-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 读取版本
+        id: release
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          version="${INPUT_VERSION:-${GITHUB_REF_NAME#v}}"
+          if [[ ! "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]] || (( ${#version} > 128 )); then
+            echo '版本号无效' >&2
+            exit 1
+          fi
+          IFS='.' read -ra identifiers <<< "${version#*-}"
+          if [[ "$version" == *-* ]]; then
+            for identifier in "${identifiers[@]}"; do
+              if [[ "$identifier" =~ ^0[0-9]+$ ]]; then exit 1; fi
+            done
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: 构建并推送
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: @DIRECTORY@/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            @IMAGE@:${{ steps.release.outputs.version }}
+            @IMAGE@:latest
+          build-args: |
+            AUTHGO_CONFIG=${{ vars.AUTHGO_CONFIG }}
+            VERSION=${{ steps.release.outputs.version }}
+@PAYLOAD_ARGS@@FPM_STEP@

@@ -1,0 +1,20 @@
+export type StatusKind = "success" | "warning" | "danger" | "info" | "neutral";
+export const statusKinds: Record<string, StatusKind> = {
+  active: "success",
+  online: "success",
+  offline_instance: "neutral",
+  OK: "success",
+  sent: "success",
+  suspended: "warning",
+  retrying: "warning",
+  pending: "warning",
+  grace: "warning",
+  revoked: "danger",
+  expired: "danger",
+  failed: "danger",
+  disabled: "danger",
+  sending: "info",
+  unused: "neutral",
+  unbound: "neutral",
+  withdrawn: "neutral",
+};

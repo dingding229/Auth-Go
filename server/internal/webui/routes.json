@@ -1,0 +1,286 @@
+[
+  {
+    "id": "root",
+    "path": "/",
+    "scope": "public",
+    "redirect": "/portal"
+  },
+  {
+    "id": "admin-setup",
+    "path": "/setup",
+    "scope": "admin",
+    "component": "setup",
+    "title": "首次初始化"
+  },
+  {
+    "id": "admin-login",
+    "path": "/login",
+    "scope": "admin",
+    "component": "login",
+    "title": "管理端登录",
+    "mode": "admin"
+  },
+  {
+    "id": "portal-login",
+    "path": "/portal/login",
+    "scope": "public",
+    "component": "login",
+    "title": "用户中心登录",
+    "mode": "portal"
+  },
+  {
+    "id": "admin",
+    "path": "",
+    "scope": "admin",
+    "component": "admin-layout",
+    "redirect": "/overview",
+    "protected": true
+  },
+  {
+    "id": "admin-overview",
+    "path": "/overview",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "dashboard",
+    "title": "概览",
+    "section": "主要功能"
+  },
+  {
+    "id": "admin-users",
+    "path": "/users",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "crud",
+    "title": "用户",
+    "section": "主要功能",
+    "resource": "users"
+  },
+  {
+    "id": "admin-licenses",
+    "path": "/licenses",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "licenses",
+    "title": "授权",
+    "section": "主要功能"
+  },
+  {
+    "id": "admin-activations",
+    "path": "/activations",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "activations",
+    "title": "实例",
+    "section": "主要功能"
+  },
+  {
+    "id": "admin-applications",
+    "path": "/applications",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "crud",
+    "title": "软件",
+    "section": "主要功能",
+    "resource": "applications"
+  },
+  {
+    "id": "admin-docs",
+    "path": "/docs",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "integration-docs",
+    "title": "接入文档",
+    "section": "更多"
+  },
+  {
+    "id": "admin-verify-logs",
+    "path": "/verify-logs",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "observations",
+    "title": "验证日志",
+    "section": "更多"
+  },
+  {
+    "id": "admin-audit-logs",
+    "path": "/audit-logs",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "observations",
+    "title": "审计日志",
+    "section": "更多"
+  },
+  {
+    "id": "admin-settings",
+    "path": "/settings",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "settings",
+    "title": "系统设置",
+    "section": "更多"
+  },
+  {
+    "id": "admin-profile",
+    "path": "/profile",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "profile",
+    "title": "个人安全",
+    "section": "更多"
+  },
+  {
+    "id": "admin-users-detail",
+    "path": "/users/:id",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "user-detail",
+    "title": "用户详情"
+  },
+  {
+    "id": "admin-applications-detail",
+    "path": "/applications/:id",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "application-detail",
+    "title": "软件工作台"
+  },
+  {
+    "id": "admin-licenses-detail",
+    "path": "/licenses/:id",
+    "scope": "admin",
+    "parent": "admin",
+    "component": "license-detail",
+    "title": "授权详情"
+  },
+  {
+    "id": "portal",
+    "path": "/portal",
+    "scope": "public",
+    "component": "portal-layout",
+    "redirect": "/portal/home",
+    "protected": true
+  },
+  {
+    "id": "portal-home",
+    "path": "/portal/home",
+    "scope": "public",
+    "parent": "portal",
+    "component": "user-center",
+    "title": "我的概览",
+    "portalMenu": "我的概览",
+    "userMenu": "概览",
+    "userMenuOrder": 0
+  },
+  {
+    "id": "portal-license",
+    "path": "/portal/license",
+    "scope": "public",
+    "parent": "portal",
+    "component": "portal",
+    "title": "授权概览",
+    "portalMenu": "授权概览"
+  },
+  {
+    "id": "portal-activations",
+    "path": "/portal/activations",
+    "scope": "public",
+    "parent": "portal",
+    "component": "portal",
+    "title": "我的实例",
+    "portalMenu": "我的实例"
+  },
+  {
+    "id": "portal-logs",
+    "path": "/portal/logs",
+    "scope": "public",
+    "parent": "portal",
+    "component": "portal",
+    "title": "验证记录",
+    "portalMenu": "验证记录"
+  },
+  {
+    "id": "portal-announcements",
+    "path": "/portal/announcements",
+    "scope": "public",
+    "parent": "portal",
+    "component": "portal-activity",
+    "title": "软件公告",
+    "portalMenu": "软件公告",
+    "userMenu": "公告",
+    "userMenuOrder": 4
+  },
+  {
+    "id": "portal-licenses",
+    "path": "/portal/licenses",
+    "scope": "public",
+    "parent": "portal",
+    "component": "portal-licenses",
+    "title": "我的授权",
+    "userMenu": "我的授权",
+    "userOnly": true,
+    "userMenuOrder": 1
+  },
+  {
+    "id": "portal-instances",
+    "path": "/portal/instances",
+    "scope": "public",
+    "parent": "portal",
+    "component": "portal-instances",
+    "title": "我的实例",
+    "userMenu": "我的实例",
+    "userOnly": true,
+    "userMenuOrder": 2
+  },
+  {
+    "id": "portal-updates",
+    "path": "/portal/updates",
+    "scope": "public",
+    "parent": "portal",
+    "component": "portal-activity",
+    "title": "软件更新",
+    "userMenu": "软件更新",
+    "userOnly": true,
+    "userMenuOrder": 3
+  },
+  {
+    "id": "portal-account",
+    "path": "/portal/account",
+    "scope": "public",
+    "parent": "portal",
+    "component": "portal-account",
+    "title": "账号安全",
+    "userMenu": "账号安全",
+    "userOnly": true,
+    "userMenuOrder": 5
+  },
+  {
+    "id": "portal-license-detail",
+    "path": "/portal/licenses/:id",
+    "scope": "public",
+    "parent": "portal",
+    "component": "portal-license-detail",
+    "title": "授权详情",
+    "userOnly": true
+  },
+  {
+    "id": "forbidden",
+    "path": "/forbidden",
+    "scope": "public",
+    "component": "forbidden",
+    "title": "无权访问"
+  },
+  {
+    "id": "unavailable",
+    "path": "/unavailable",
+    "scope": "public",
+    "component": "unavailable",
+    "title": "暂时无法连接"
+  },
+  {
+    "id": "not-found",
+    "path": "/not-found",
+    "scope": "public",
+    "component": "not-found",
+    "title": "页面不存在"
+  }
+]

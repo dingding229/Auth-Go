@@ -1,0 +1,22 @@
+services:
+  app:
+    image: authgo-docker-java-example:local
+    build:
+      context: ../../..
+      dockerfile: examples/docker/java/Dockerfile
+      args:
+        VERSION: ${VERSION:-1.0.0}
+        # Only a BUILD argument; never put this in the container's environment.
+        AUTHGO_CONFIG: ${AUTHGO_CONFIG:-}
+    environment:
+      AUTHGO_LICENSE: ${AUTHGO_LICENSE:-}
+    ports:
+      - "127.0.0.1:8090:8080"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 10s
+    volumes:
+      - authgo_cache:/var/lib/authgo
+volumes:
+  authgo_cache:

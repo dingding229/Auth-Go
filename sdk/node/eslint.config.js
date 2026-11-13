@@ -1,0 +1,50 @@
+// No runtime dependencies: run with an externally installed ESLint 9+.
+export default [
+  {
+    files: ["**/*.js", "**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: "latest",
+      sourceType: "module",
+      globals: Object.fromEntries(
+        [
+          "Buffer",
+          "process",
+          "console",
+          "URL",
+          "performance",
+          "setTimeout",
+          "clearTimeout",
+          "setInterval",
+          "clearInterval",
+          "AbortController",
+          "fetch",
+        ].map((name) => [name, "readonly"]),
+      ),
+    },
+    rules: {
+      "no-undef": "error",
+      "no-unused-vars": ["error", { args: "after-used", caughtErrors: "none" }],
+      "constructor-super": "error",
+      "no-class-assign": "error",
+      "no-compare-neg-zero": "error",
+      "no-const-assign": "error",
+      "no-constant-binary-expression": "error",
+      "no-control-regex": "off", // Protocol predicates intentionally reject ASCII controls.
+      "no-dupe-args": "error",
+      "no-dupe-class-members": "error",
+      "no-dupe-else-if": "error",
+      "no-dupe-keys": "error",
+      "no-duplicate-case": "error",
+      "no-func-assign": "error",
+      "no-import-assign": "error",
+      "no-promise-executor-return": "off",
+      "no-setter-return": "error",
+      "no-this-before-super": "error",
+      "no-unreachable": "error",
+      "no-unsafe-finally": "error",
+      "no-unsafe-optional-chaining": "error",
+      "use-isnan": "error",
+      "valid-typeof": "error",
+    },
+  },
+];

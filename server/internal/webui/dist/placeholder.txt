@@ -1,0 +1,1 @@
+Frontend files are copied here during the application build.

@@ -1,0 +1,85 @@
+{
+  "v": 1,
+  "cases": [
+    {
+      "machine": " ABC-123\n",
+      "mac": "AA-BB-CC-DD-EE-FF",
+      "cpu": " Intel(R)   Core(TM) CPU\n",
+      "expected": "e3875457de8eac97e12195b125fdd3bedcd04b85fb05ee8500315592a9862a2f"
+    },
+    {
+      "machine": "ABC-123",
+      "mac": "aa:bb:cc:dd:ee:ff",
+      "cpu": "intel(r) core(tm) cpu",
+      "expected": "e3875457de8eac97e12195b125fdd3bedcd04b85fb05ee8500315592a9862a2f"
+    },
+    {
+      "machine": " Machine-Z ",
+      "mac": "02:00:00:00:00:01",
+      "cpu": "Apple M4",
+      "expected": "6507165127048f4b066b063771f03a9f0bc0bab39329318d3207960725853e11"
+    }
+  ],
+  "cpuinfo_cases": [
+    {
+      "name": "x86",
+      "cpuinfo": "processor : 0\nmodel name : Intel(R) Core(TM) CPU\n",
+      "cpu": "Intel(R) Core(TM) CPU",
+      "machine": "ABC-123",
+      "mac": "aa:bb:cc:dd:ee:ff",
+      "expected": "e3875457de8eac97e12195b125fdd3bedcd04b85fb05ee8500315592a9862a2f"
+    },
+    {
+      "name": "legacy_arm",
+      "cpuinfo": "CPU implementer : 0x41\nCPU part : 0xd03\n\nHardware : BCM2835\n",
+      "cpu": "BCM2835",
+      "machine": "ABC-123",
+      "mac": "aa:bb:cc:dd:ee:ff",
+      "expected": "2cafcfced9185a14f0854933568108a1ffdb0b371e502c510e9ad40b88b24af2"
+    },
+    {
+      "name": "legacy_order",
+      "cpuinfo": "Hardware : Legacy Board\nmodel name : Other\n",
+      "cpu": "Legacy Board",
+      "machine": "ABC-123",
+      "mac": "aa:bb:cc:dd:ee:ff",
+      "expected": "c26c013825a6419b0f079cfc579914915be546d0291e198d8e03c2e2c5fb75f0"
+    },
+    {
+      "name": "aarch64",
+      "cpuinfo": "processor : 0\nCPU implementer :  0X41 \nCPU part : 0XD0C\n\nprocessor : 1\nCPU implementer : 0x42\nCPU part : 0xd40\n",
+      "cpu": "arm:0x41:0xd0c",
+      "machine": "ABC-123",
+      "mac": "aa:bb:cc:dd:ee:ff",
+      "expected": "ff763833af677183d557c2cd5e2ce728d06378e4118ec65386bd8c27271fdd60"
+    },
+    {
+      "name": "riscv",
+      "cpuinfo": "processor : 0\nisa : rv64imafdc\nuarch : sifive,u74-mc\n",
+      "cpu": "sifive,u74-mc",
+      "machine": "ABC-123",
+      "mac": "aa:bb:cc:dd:ee:ff",
+      "expected": "1f480264d0f3d6d30364e784b84da85c6fda07253c3aab4c0b95242dd41a71ec"
+    },
+    {
+      "name": "missing",
+      "cpuinfo": "processor : 0\nBogoMIPS : 100\n",
+      "cpu": "",
+      "code": "SDK_FINGERPRINT_UNAVAILABLE"
+    },
+    {
+      "name": "partial_arm",
+      "cpuinfo": "CPU implementer : 0x41\n\nCPU part : 0xd03\n",
+      "cpu": "",
+      "code": "SDK_FINGERPRINT_UNAVAILABLE"
+    },
+    {
+      "name": "empty_legacy",
+      "cpuinfo": "model name : \nCPU implementer : 0x 41\nCPU part : 0x D03\n",
+      "cpu": "arm:0x41:0xd03",
+      "machine": "ABC-123",
+      "mac": "aa:bb:cc:dd:ee:ff",
+      "expected": "83d765e3b93e6e2e6562a7e264930c012a19ba2a3ea4a940b4aca0ccd20df668"
+    }
+  ]
+}

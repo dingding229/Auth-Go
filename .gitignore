@@ -1,0 +1,90 @@
+# Go
+/bin/
+/server/authgo
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.*
+
+# Node / generated frontend
+node_modules/
+/web/dist/
+/server/web/dist/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data and secrets
+/data/
+/server/data/
+.env
+.env.*
+*.db
+*.db-shm
+*.db-wal
+
+# Local tools
+.DS_Store
+.idea/
+.vscode/
+
+# SDK/example runtime credentials and offline grants
+/examples/basic/data/
+authgo-v1-*.cache
+.authgo-*.tmp
+*.lic
+
+# Multi-language SDK build/test artifacts
+__pycache__/
+*.pyc
+*.egg-info/
+/sdk/python/build/
+/sdk/rust/target/
+/sdk/java/out/
+/sdk/csharp/**/bin/
+/sdk/csharp/**/obj/
+
+/sdk/conformance/reports/
+
+/.aws/
+/.ssh/
+
+# Local analysis caches and run output
+/.ruff_cache/
+/.mypy_cache/
+**/.pytest_cache/
+/.cache/
+/.authgo-*/
+/.authgo-smoke.*
+/*.log
+*.heapsnapshot
+*.hprof
+*.dmp
+/core
+/core.[0-9]*
+*.oci.tar
+*.oci.tar.gz
+/backups/
+/master.key
+/server/master.key
+/tests/**/bin/
+/tests/**/obj/
+/examples/**/bin/
+/examples/**/obj/
+/examples/**/target/
+
+# Generated embedded frontend; retain source-only compilation placeholder.
+server/internal/webui/dist/*
+!server/internal/webui/dist/placeholder.txt
+
+# Offline restore staging contains database keys and captured container ENV.
+/.restore/
+
+# Ephemeral real-router inventory, produced by server tests for web tests.
+/server/.route-contract.json
+/server/.route-contract-*

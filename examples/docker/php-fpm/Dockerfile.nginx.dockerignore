@@ -1,0 +1,6 @@
+# The nginx companion only needs its immutable configuration.
+**
+!examples/
+!examples/docker/
+!examples/docker/php-fpm/
+!examples/docker/php-fpm/nginx.conf.template
