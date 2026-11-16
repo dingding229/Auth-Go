@@ -6,6 +6,10 @@
 
 软件镜像名填写 Docker Hub 公开仓库，如 `your-org/your-app`，不带标签。首次激活必须联网；客户只填授权码。
 
+反向代理配置、Cloudflare 填入步骤及网段维护要求，
+统一见 [HTTPS 反向代理与受信代理](https://github.com/dingding229/Auth-Go#https-反向代理与受信代理)。
+客户运行部署另见[给客户的运行说明](?tab=customer)。
+
 ## 2. 接入 SDK 与授权
 
 1. 打开软件“接入程序”，选择语言和 PHP 运行模式。

@@ -7,7 +7,12 @@ import { computed, onMounted, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { get, patch, post, download } from "../../lib/http";
 import { record, rows, stringify, type Row } from "../../lib/json";
-import { field, type Field } from "../../lib/schema";
+import { field, type Field, type Values } from "../../lib/schema";
+import {
+  INTERNAL_TRUSTED_PROXIES,
+  CLOUDFLARE_TRUSTED_PROXIES,
+  mergeTrustedProxies,
+} from "../../lib/trusted-proxies";
 import { useUIStore } from "../../stores/ui";
 import { useTask, confirmAction, useLoadTask } from "../../composables/tasks";
 import AdminPathSettings from "../../components/AdminPathSettings.vue";
@@ -63,6 +68,17 @@ function outsideRecommended(key: string, value: unknown) {
   const range = rateLimits[key as keyof typeof rateLimits];
   return range && (Number(value) < range.min || Number(value) > range.max);
 }
+function fillTrustedProxies(values: Values, cloudflare: boolean) {
+  values.trusted_proxies = mergeTrustedProxies(
+    String(values.trusted_proxies ?? ""),
+    cloudflare
+      ? [...INTERNAL_TRUSTED_PROXIES, ...CLOUDFLARE_TRUSTED_PROXIES]
+      : INTERNAL_TRUSTED_PROXIES,
+  );
+  ElMessage.success(
+    "已填入，保存后生效。Cloudflare 网段偶有调整，请定期对照官网。",
+  );
+}
 const topFields: Field[] = [
   field("trial_days", "免授权码试用天数（所有软件）", {
     type: "number",
@@ -76,7 +92,7 @@ const topFields: Field[] = [
   field("site_name", "站点名称", { required: true, max: 128 }),
   field("trusted_proxies", "受信代理（每行一项）", {
     type: "lines",
-    hint: "留空默认信任环回、RFC1918 私网、链路本地和 IPv6 ULA 直接对端。填写后仅信任此列表，不再自动信任私网。代理必须覆盖并传递 X-Forwarded-For、X-Forwarded-Proto、X-Forwarded-Host；日志仍显示“内网”时请检查代理转发头。",
+    hint: "留空默认信任环回、私网和链路本地直接对端；填写后仅信任此列表，不再自动信任私网。代理须正确传递 X-Forwarded-For/Proto/Host。使用 Cloudflare 时点击“填入 Cloudflare”，否则记录的是 Cloudflare 节点 IP。",
   }),
   ...Object.entries(rateLimits).map(([key, range]) =>
     field(key, range.label, {
@@ -234,6 +250,25 @@ async function backup() {
             @cancel="load"
           >
             <template #field-hint="{ field: item, values }">
+              <div
+                v-if="item.key === 'trusted_proxies'"
+                class="action-toolbar"
+              >
+                <el-button
+                  native-type="button"
+                  :disabled="task.busy.value"
+                  @click="fillTrustedProxies(values, false)"
+                >
+                  填入内网默认
+                </el-button>
+                <el-button
+                  native-type="button"
+                  :disabled="task.busy.value"
+                  @click="fillTrustedProxies(values, true)"
+                >
+                  填入 Cloudflare
+                </el-button>
+              </div>
               <p
                 v-if="outsideRecommended(item.key, values[item.key])"
                 class="rate-warning"

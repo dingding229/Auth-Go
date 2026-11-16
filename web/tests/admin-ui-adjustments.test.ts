@@ -16,6 +16,10 @@ import AdminLayout from "../src/layouts/AdminLayout.vue";
 import SDKExamples from "../src/components/SDKExamples.vue";
 import { announcementExamples, sdkLanguages } from "../src/lib/sdk-examples";
 import { internalIP } from "../src/lib/ip";
+import {
+  INTERNAL_TRUSTED_PROXIES,
+  CLOUDFLARE_TRUSTED_PROXIES,
+} from "../src/lib/trusted-proxies";
 const adapter = http.defaults.adapter;
 let app: App | undefined, root: HTMLElement;
 const clipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
@@ -336,4 +340,84 @@ it("限流提示不阻止超出推荐范围的值，突发小于速率时禁止�
     expect(root.textContent).toContain("突发容量不能小于对应的速率"),
   );
   expect(writes).toHaveLength(1);
+});
+
+it("受信代理按钮合并当前草稿，不自动保存且不重置其他字段", async () => {
+  const writes: unknown[] = [];
+  let settingsReads = 0;
+  let settings = {
+    trial_days: 14,
+    public_url: "",
+    site_name: "Auth Go",
+    trusted_proxies: ["203.0.113.8"],
+    client_ip_rate: 10,
+    client_ip_burst: 60,
+    client_license_rate: 5,
+    client_license_burst: 30,
+    log_retention_days: 90,
+    notification_retention_days: 30,
+    admin_notification_emails: [],
+    smtp: {},
+  };
+  respond((url, method, body) => {
+    if (url === "/system/settings") {
+      if (method === "patch") {
+        writes.push(body);
+        settings = { ...settings, ...(body as object) };
+      } else settingsReads++;
+      return settings;
+    }
+    if (url === "/applications/gateway") return { public_key: "" };
+    if (url === "/system/updates") return { poll_minutes: 10 };
+    return { items: [] };
+  });
+  const message = vi.spyOn(ElMessage, "success");
+  await mount(SettingsView);
+  await vi.waitFor(() =>
+    expect(
+      root.querySelector('[data-field="trusted_proxies"] textarea'),
+    ).not.toBeNull(),
+  );
+  const textarea = root.querySelector<HTMLTextAreaElement>(
+    '[data-field="trusted_proxies"] textarea',
+  )!;
+  textarea.value = `203.0.113.8\n 198.51.100.42 \n ${INTERNAL_TRUSTED_PROXIES[0]} \n\n${INTERNAL_TRUSTED_PROXIES[0]}`;
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  const siteName = root.querySelector<HTMLInputElement>(
+    '[data-field="site_name"] input',
+  )!;
+  siteName.value = "尚未保存的站点";
+  siteName.dispatchEvent(new Event("input", { bubbles: true }));
+  await nextTick();
+  buttons("填入内网默认")[0]!.click();
+  await nextTick();
+  const internal = [
+    "203.0.113.8",
+    "198.51.100.42",
+    ...INTERNAL_TRUSTED_PROXIES,
+  ];
+  expect(textarea.value.split("\n")).toEqual(internal);
+  expect(writes).toEqual([]);
+  expect(siteName.value).toBe("尚未保存的站点");
+  buttons("填入 Cloudflare")[0]!.click();
+  await nextTick();
+  const expected = [...internal, ...CLOUDFLARE_TRUSTED_PROXIES];
+  expect(textarea.value.split("\n")).toEqual(expected);
+  buttons("填入 Cloudflare")[0]!.click();
+  await nextTick();
+  expect(textarea.value.split("\n")).toEqual(expected);
+  expect(writes).toEqual([]);
+  expect(settingsReads).toBe(1);
+  expect(siteName.value).toBe("尚未保存的站点");
+  expect(message).toHaveBeenCalledWith(
+    "已填入，保存后生效。Cloudflare 网段偶有调整，请定期对照官网。",
+  );
+  textarea
+    .closest("form")!
+    .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  await vi.waitFor(() =>
+    expect(writes).toEqual([
+      { trusted_proxies: expected, site_name: "尚未保存的站点" },
+    ]),
+  );
 });

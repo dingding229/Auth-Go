@@ -272,6 +272,11 @@ server {
 
 Compose 不指定网段，由 Docker 自动分配默认网络。受信代理为空时，默认信任内部直接对端（环回、RFC1918、链路本地、IPv6 ULA），而公网直接对端的转发头一律忽略。管理员填写列表后，仅信任所填地址，不再自动信任私网。代理必须覆盖并传递 X-Forwarded-For/Proto/Host；XFF 自右向左跳过受信地址，无 XFF 时才使用 X-Real-IP。使用 HTTPS 反向代理后，在“对外服务地址”填写 HTTPS 地址；保存后立即生效。不要允许不可信的私网客户端或容器直接接触服务，应为此类部署配置明确的代理 IP/CIDR。日志旁出现“内网”时，请检查代理转发头。解析结果统一用于限流、试用、审计和客户端日志，可信来源同时决定 Cookie Secure 与公开地址。
 
+部署在 Cloudflare 后面时，在“系统设置 → 基础与安全 → 受信代理”点击“填入 Cloudflare”后保存。
+按钮将内网和 Cloudflare 网段合并进当前列表，保留已有行、去重，不自动保存；未填入时可能记录 Cloudflare 节点 IP（AS13335），而非客户端真实 IP。
+本机 Nginx 反代应使用 `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` 保留 Cloudflare 的转发链，不能用上述直连示例的 `$remote_addr` 覆盖。
+网段来自 [Cloudflare 官网](https://www.cloudflare.com/ips/)，偶有调整，请定期核对并更新。
+
 备份和 IP 库上传可能超过代理的默认请求体或超时限制：仅对相应位置调整（普通请求仍保留原限制），备份创建需预留超过 6 分钟、下载超过 5 分钟，IP 库上传请求体最高 513 MiB。管理 API 文档在登录后的“接入文档 → 管理 API”查看；自定义后台地址后位置匹配规则也要随之调整。
 
 ## 高级配置
