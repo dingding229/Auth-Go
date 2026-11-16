@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
-ARG AUTHGO_TOOLS_IMAGE=docker.io/dingding229/authgo:1.0.0
-FROM ${AUTHGO_TOOLS_IMAGE} AS tools
+ARG AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:latest
+FROM ${AUTHGO_PACK_IMAGE} AS tools
 FROM php:8.1-cli AS build
 COPY --from=tools /authgo-pack /usr/local/bin/authgo-pack
 RUN docker-php-ext-install pcntl >/dev/null

@@ -12,7 +12,9 @@ import {
   INTERNAL_TRUSTED_PROXIES,
   CLOUDFLARE_TRUSTED_PROXIES,
   mergeTrustedProxies,
+  hasCloudflareProxies,
 } from "../../lib/trusted-proxies";
+import { useQueryTab } from "../../composables/query-tab";
 import { useUIStore } from "../../stores/ui";
 import { useTask, confirmAction, useLoadTask } from "../../composables/tasks";
 import AdminPathSettings from "../../components/AdminPathSettings.vue";
@@ -26,8 +28,13 @@ const task = useTask(),
   loadTask = useLoadTask(),
   settings = ref<Row>(),
   backups = ref<Row[]>([]),
-  to = ref("");
+  to = ref(""),
+  backupPassword = ref("");
 const ui = useUIStore();
+const settingsTab = useQueryTab(
+  ["general", "publishing", "smtp", "ipdb", "updates", "backups"],
+  "general",
+);
 watch(
   () => settings.value?.site_name,
   (name) => {
@@ -170,7 +177,10 @@ async function saveTop(body: Row) {
       ElMessage.info("没有需要保存的修改");
       return;
     }
-    settings.value = await patch("/system/settings", changed);
+    settings.value = {
+      ...settings.value,
+      ...(await patch("/system/settings", changed)),
+    };
     ElMessage.success("系统设置已保存");
   });
 }
@@ -181,7 +191,10 @@ async function saveSMTP(body: Row) {
       ElMessage.info("没有需要保存的修改");
       return;
     }
-    settings.value = await patch("/system/settings", { smtp: changed });
+    settings.value = {
+      ...settings.value,
+      ...(await patch("/system/settings", { smtp: changed })),
+    };
     ElMessage.success("邮件设置已保存");
   });
 }
@@ -192,9 +205,12 @@ async function clearSMTP() {
       "清除 SMTP 密码",
       { action: "清除 SMTP 密码", danger: true },
     );
-    settings.value = await patch("/system/settings", {
-      smtp: { password: "" },
-    });
+    settings.value = {
+      ...settings.value,
+      ...(await patch("/system/settings", {
+        smtp: { password: "" },
+      })),
+    };
   }, "SMTP密码已清除");
 }
 async function test() {
@@ -214,6 +230,31 @@ async function backup() {
     await post("/system/backups", {}, { timeout: 370_000 });
     backups.value = rows((await get("/system/backups")).items);
   }, "备份已完成");
+}
+async function exportBackup(name: string) {
+  const password = backupPassword.value;
+  await task.run(async () => {
+    if (password && [...password].length < 12)
+      throw new Error("备份密码至少需要 12 个字符");
+    try {
+      if (password)
+        await download(
+          "admin",
+          `/system/backups/${encodeURIComponent(name)}/export`,
+          name + ".zip.enc",
+          { method: "POST", data: { password }, timeout: 310_000 },
+        );
+      else
+        await download(
+          "admin",
+          `/system/backups/${encodeURIComponent(name)}`,
+          name + ".zip",
+          { timeout: 310_000 },
+        );
+    } finally {
+      backupPassword.value = "";
+    }
+  });
 }
 </script>
 <template>
@@ -238,8 +279,8 @@ async function backup() {
   />
   <request-notice :error="task.error.value" />
   <template v-if="settings">
-    <el-tabs>
-      <el-tab-pane label="基础与安全">
+    <el-tabs v-model="settingsTab">
+      <el-tab-pane name="general" label="基础与安全">
         <section-panel>
           <gateway-settings />
           <schema-editor
@@ -250,10 +291,19 @@ async function backup() {
             @cancel="load"
           >
             <template #field-hint="{ field: item, values }">
-              <div
-                v-if="item.key === 'trusted_proxies'"
-                class="action-toolbar"
+              <p
+                v-if="
+                  item.key === 'trusted_proxies' &&
+                    settings.cloudflare_ip_seen &&
+                    !hasCloudflareProxies(String(values.trusted_proxies ?? ''))
+                "
+                class="rate-warning"
+                role="status"
               >
+                最近记录到的客户端 IP 属于 Cloudflare 节点，请点击“填入
+                Cloudflare”并保存。
+              </p>
+              <div v-if="item.key === 'trusted_proxies'" class="action-toolbar">
                 <el-button
                   native-type="button"
                   :disabled="task.busy.value"
@@ -282,10 +332,10 @@ async function backup() {
         <AdminPathSettings />
         <SupportContactSettings />
       </el-tab-pane>
-      <el-tab-pane label="GitHub 与 Docker Hub 发布" lazy>
+      <el-tab-pane name="publishing" label="GitHub 与 Docker Hub 发布" lazy>
         <PublishingSettings />
       </el-tab-pane>
-      <el-tab-pane label="邮件服务">
+      <el-tab-pane name="smtp" label="邮件服务">
         <section-panel>
           <el-alert
             title="默认要求TLS，明文连接仅允许本机测试。修改后请手动发送测试邮件。"
@@ -332,14 +382,14 @@ async function backup() {
           </el-form>
         </section-panel>
       </el-tab-pane>
-      <el-tab-pane label="IP 库" lazy>
+      <el-tab-pane name="ipdb" label="IP 库" lazy>
         <IpDatabaseSettings />
       </el-tab-pane>
-      <el-tab-pane label="版本同步">
+      <el-tab-pane name="updates" label="版本同步">
         <update-settings />
       </el-tab-pane>
 
-      <el-tab-pane label="数据库备份">
+      <el-tab-pane label="数据库备份" name="backups">
         <section-panel>
           <div class="panel-heading">
             <h2>SQLite备份</h2>
@@ -352,10 +402,24 @@ async function backup() {
             </el-button>
           </div>
           <p class="muted">
-            每日自动备份，最多保留7份。请下载完整ZIP，包含authgo.db和
+            每日自动备份仍不加密，最多保留7份。请下载完整ZIP，包含authgo.db和
             master.key；主密钥与数据库在同一数据卷，必须一起备份。ZIP
             含敏感密钥，请安全保存。恢复需停机；环境变量主密钥优先，必须与备份一致。旧快照没有完整包时须另行备份原密钥。此处不提供在线恢复。
           </p>
+          <el-form label-position="top" @submit.prevent>
+            <el-form-item label="下载密码（可选，至少 12 个字符）">
+              <el-input
+                v-model="backupPassword"
+                aria-label="备份下载密码"
+                type="password"
+                autocomplete="new-password"
+                :maxlength="4096"
+              />
+              <p class="field-hint">
+                备份包含数据库和主密钥；设置密码后，丢失密码将无法恢复。
+              </p>
+            </el-form-item>
+          </el-form>
           <data-table
             :error="loadTask.error.value"
             :loading="loadTask.busy.value"
@@ -374,16 +438,8 @@ async function backup() {
               <el-button
                 link
                 type="primary"
-                @click="
-                  task.run(() =>
-                    download(
-                      'admin',
-                      `/system/backups/${encodeURIComponent(String(row.name))}`,
-                      String(row.name) + '.zip',
-                      { timeout: 310_000 },
-                    ),
-                  )
-                "
+                :disabled="task.busy.value"
+                @click="exportBackup(String(row.name))"
               >
                 下载完整包
               </el-button>

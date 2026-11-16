@@ -3,6 +3,7 @@ package publishing
 import (
 	"authgo/internal/auth"
 	"authgo/internal/bootstrap"
+	"authgo/internal/buildinfo"
 	"authgo/internal/catalog"
 	"authgo/internal/db"
 	"authgo/internal/keycheck"
@@ -437,6 +438,9 @@ func TestWorkflowLanguageEncryptionAndSharedSources(t *testing.T) {
 				if err != nil || workflow != string(expected) {
 					t.Fatal("workflow differs from shared manual/sync contract", err)
 				}
+			}
+			if strings.Contains(workflow, "AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:"+buildinfo.PackImageTag()) != encrypted {
+				t.Fatal("pack image does not follow server version")
 			}
 			if strings.Contains(workflow, "AUTHGO_TOOLS_IMAGE") || strings.Contains(workflow, "@DIRECTORY@") || strings.Contains(workflow, "PAYLOAD_PUBLIC_KEY=") != encrypted {
 				t.Fatal("workflow mismatch")

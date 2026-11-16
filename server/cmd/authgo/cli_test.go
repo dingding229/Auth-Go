@@ -2,9 +2,11 @@ package main
 
 import (
 	"authgo/internal/adminpath"
+	"authgo/internal/backupfile"
 	"authgo/internal/db"
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,5 +73,45 @@ func TestAdminPathCommand(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "master.key")); !os.IsNotExist(err) {
 		t.Fatal("utility unexpectedly loaded/created master key", err)
+	}
+}
+
+func TestBackupUnlockCommandAcceptsEnvironmentAndStandardInput(t *testing.T) {
+	dir := t.TempDir()
+	database := filepath.Join(dir, "snapshot")
+	original := filepath.Join(dir, "original.zip")
+	if err := os.WriteFile(database, []byte("snapshot"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := backupfile.Write(database, original, bytes.Repeat([]byte{9}, 32)); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var encrypted bytes.Buffer
+	password := "private backup password"
+	if err := backupfile.Encrypt(&encrypted, bytes.NewReader(raw), password); err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(dir, "bundle.enc")
+	if err := os.WriteFile(source, encrypted.Bytes(), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for i, environment := range []string{password, ""} {
+		t.Setenv("AUTHGO_BACKUP_PASSWORD", environment)
+		var out bytes.Buffer
+		destination := filepath.Join(dir, fmt.Sprintf("restored-%d.zip", i))
+		if err := unlockBackup([]string{"backup-unlock", source, destination}, strings.NewReader(password+"\n"), &out); err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(out.String(), password) {
+			t.Fatal("password leaked")
+		}
+	}
+	t.Setenv("AUTHGO_BACKUP_PASSWORD", "")
+	if err := unlockBackup([]string{"backup-unlock", original, filepath.Join(dir, "legacy.zip")}, strings.NewReader(""), &bytes.Buffer{}); err != nil {
+		t.Fatal("legacy ZIP no longer supported", err)
 	}
 }

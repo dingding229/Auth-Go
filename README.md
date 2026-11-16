@@ -115,7 +115,7 @@ func main() {
 authgo-pack 已内置在 `docker.io/dingding229/authgo` 镜像中，代码加密构建会自动使用，无需配置。离线追查可从主镜像运行工具（将占位值替换为软件标记与实际文件名）：
 
 ```sh
-docker run --rm --entrypoint /authgo-pack -v "$PWD:/work:ro" docker.io/dingding229/authgo:1.0.0 trace --tag "<tag>" "/work/<文件>"
+docker run --rm --entrypoint /authgo-pack -v "$PWD:/work:ro" docker.io/dingding229/authgo:1.0.2 trace --tag "<tag>" "/work/<文件>"
 ```
 
 ### 7. 用户中心
@@ -145,17 +145,30 @@ docker run --rm --entrypoint /authgo-pack -v "$PWD:/work:ro" docker.io/dingding2
 docker compose pull && docker compose up -d
 ```
 
-默认镜像使用 `latest`。需要固定版本时，把 Compose 文件中的 `docker.io/dingding229/authgo:latest` 改为 `docker.io/dingding229/authgo:1.0.0`，再执行上面的升级命令。v1.0.0 只支持当前初始数据库结构，不支持从其他版本升级。
+默认镜像使用 `latest`。需要固定版本时，把 Compose 文件中的 `docker.io/dingding229/authgo:latest` 改为 `docker.io/dingding229/authgo:1.0.2`，再执行上面的升级命令。当前版本沿用初始数据库结构，不支持跨数据库结构升级。
 
 ### 备份与恢复
 
-默认数据库和自动生成的 `master.key` 都在安装目录的 `data` 文件夹（容器内 `/data`），必须一起备份。在“系统设置 → 数据库备份”创建并下载完整 ZIP；系统每天自动备份，默认保留最新 7 份。备份使用一致的 SQLite 快照，ZIP 只包含 `authgo.db` 和**当前实际使用的** `master.key`，不包含 IP 库或历史备份目录。备份内含主密钥，必须加密离线保存、限制访问，不能放到公开下载地址。
+默认数据库和自动生成的 `master.key` 都在安装目录的 `data` 文件夹（容器内 `/data`），必须一起备份。在“系统设置 → 数据库备份”创建并下载完整备份；下载时可选填至少 12 个字符的密码，未填下载原有 ZIP，填写后下载 `.zip.enc`（Argon2id + 分块 XChaCha20-Poly1305），密码不存储，丢失无法恢复。系统每天自动备份，默认保留最新 7 份。备份使用一致的 SQLite 快照，ZIP 只包含 `authgo.db` 和**当前实际使用的** `master.key`，不包含 IP 库或历史备份目录。备份内含主密钥，必须加密离线保存、限制访问，不能放到公开下载地址。
 
 主密钥优先级为非空 `AUTHGO_MASTER_KEY` → `/data/master.key` → 空库首次自动生成。只有数据库尚不存在时才允许自动生成；已有库缺少密钥或密钥格式损坏会拒绝启动。不要每次启动都生成新密钥，原环境密钥部署必须保留原值。
 
 #### 离线恢复
 
-恢复是**停机替换**，只接受 v1.0.0 的完整 ZIP，并使用匹配的 v1.0.0 镜像。先停止所有写入 `data` 目录的服务或工具；不要直接覆盖运行中的 SQLite 数据库，不要把旧 WAL/SHM 混入备份快照。
+恢复是**停机替换**，接受完整 ZIP 和密码加密的 ZIP 包，使用与备份数据库结构匹配的镜像。先停止所有写入 `data` 目录的服务或工具；不要直接覆盖运行中的 SQLite 数据库，不要把旧 WAL/SHM 混入备份快照。
+
+加密包先解封为 ZIP，再执行下方原有的离线校验及替换步骤；旧的未加密 ZIP 不需要密码，也仍可按原步骤恢复。解封不会修改数据库，错误密码、篡改或截断均失败且不发布输出文件。密码只能由 `AUTHGO_BACKUP_PASSWORD` 或管道标准输入提供，不使用命令行密码参数：
+
+```sh
+mkdir -p .restore && chmod 700 .restore
+# 将加密备份放入 .restore/backup.zip.enc；在可信终端读取密码，不回显
+read -rs AUTHGO_BACKUP_PASSWORD; export AUTHGO_BACKUP_PASSWORD; printf '\n'
+docker run --rm --memory=256m --user "$(id -u):$(id -g)" --workdir /work -e AUTHGO_BACKUP_PASSWORD -v "$PWD/.restore:/work" \
+  --entrypoint /authgo docker.io/dingding229/authgo:1.0.2 \
+  backup-unlock /work/backup.zip.enc /work/backup.zip
+unset AUTHGO_BACKUP_PASSWORD
+# 解封失败立即停止；成功后再执行下方校验，勿覆盖已有输出 ZIP。
+```
 
 在原 Compose 目录（即 `data` 所在目录）执行下列步骤。工具容器仅做一次性离线文件操作，不是另一种安装方式。
 
@@ -348,7 +361,7 @@ services:
 - 接入配置可以公开，但必须由开发者编译固定；不要由客户环境变量、配置文件或未经认证的响应替换信任根，也不要把授权码或配置串写入日志。
 - 客户控制运行主机，无法承诺绝对防破解；关键入口应持续执行授权守卫。代码加密和水印提高还原或追查成本，但不能阻止宿主机 root 调试和内存导出。
 - 宽限只适用于已有可信票据；到期或收到已认证明确拒绝后不得继续受保护业务。常驻进程停止，PHP-FPM/Apache 按请求式 SDK 拒绝响应。
-- 主密钥与数据库必须成对保存；v1.0.0 不支持从其他版本升级或恢复旧格式备份。
+- 主密钥与数据库必须成对保存；不支持跨数据库结构恢复；原有未加密完整 ZIP 备份仍可恢复。
 
 ## 协议概要
 

@@ -15,7 +15,8 @@ const props = defineProps<{
 const { busy, error, run } = useTask();
 const { busy: loadBusy, error: loadError, run: loadRun } = useTask();
 const url = ref(integrationOrigin()),
-  config = ref("");
+  config = ref(""),
+  packImageTag = ref("");
 watch(url, () => {
   config.value = "";
 });
@@ -42,6 +43,7 @@ async function copy() {
 onMounted(async () => {
   await loadRun(async () => {
     const s = await get("/system/settings");
+    packImageTag.value = String(s.pack_image_tag || "latest");
     if (s.public_url) url.value = String(s.public_url);
   });
   if (props.autoReveal) await reveal();
@@ -53,7 +55,11 @@ onMounted(async () => {
     type="warning"
     :closable="false"
   />
-  <el-form class="connection-form" label-position="top" @submit.prevent="reveal">
+  <el-form
+    class="connection-form"
+    label-position="top"
+    @submit.prevent="reveal"
+  >
     <el-form-item label="程序可以访问的服务地址">
       <el-input v-model="url" placeholder="https://auth.example.com" />
     </el-form-item>
@@ -78,7 +84,13 @@ onMounted(async () => {
     tabindex="0"
     aria-label="接入配置串"
   >{{ config }}</pre>
-  <DockerWizard :id="id" :application="application" :config="config" />
+  <DockerWizard
+    v-if="packImageTag"
+    :id="id"
+    :application="application"
+    :config="config"
+    :pack-image-tag="packImageTag"
+  />
   <p>
     <router-link :to="adminPage('/docs?tab=protocol')">
       查看接入协议

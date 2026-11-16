@@ -367,7 +367,7 @@ it("加密向导固定使用主镜像且不读取系统镜像设置", async () =
   next.click();
   await vi.waitFor(() =>
     expect(root!.textContent).toContain(
-      "FROM docker.io/dingding229/authgo:1.0.0 AS tools",
+      "ARG AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:latest",
     ),
   );
   expect(requested).not.toContain("/system/settings");

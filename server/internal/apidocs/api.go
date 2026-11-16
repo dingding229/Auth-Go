@@ -609,10 +609,11 @@ func PatchAdminVersionsId() {}
 func DeleteAdminVersionsId() {}
 
 // @Summary 系统设置 GET /system/settings
+// @Description cloudflare_ip_seen 仅检查最近 200 条验证日志；server_version 和 pack_image_tag 为只读构建信息。
 // @Tags 系统设置
 // @Produce json
 // @Security AdminBearer
-// @Success 200 {object} Envelope
+// @Success 200 {object} SystemSettingsResponse
 // @Failure 400,401,403,404,409,429,500 {object} Envelope
 // @Router /api/v1/admin/system/settings [get]
 func GetAdminSystemSettings() {}
@@ -643,7 +644,7 @@ func PostAdminSystemSmtpTest() {}
 // @Tags 系统设置
 // @Produce json
 // @Security AdminBearer
-// @Success 200 {object} Envelope
+// @Success 200 {object} BackupListResponse
 // @Failure 400,401,403,404,409,429,500 {object} Envelope
 // @Router /api/v1/admin/system/backups [get]
 func GetAdminSystemBackups() {}
@@ -1898,3 +1899,32 @@ type PortalLicenseListResponse struct {
 	Envelope
 	Data PortalLicenseList `json:"data"`
 }
+
+type SystemSettingsResponse struct {
+	Code    string                    `json:"code"`
+	Message string                    `json:"message"`
+	Data    automation.SystemSettings `json:"data"`
+}
+type BackupList struct {
+	Items  []automation.BackupInfo `json:"items"`
+	Total  int                     `json:"total"`
+	Status automation.BackupStatus `json:"status"`
+}
+type BackupListResponse struct {
+	Code    string     `json:"code"`
+	Message string     `json:"message"`
+	Data    BackupList `json:"data"`
+}
+
+// @Summary 下载可选密码加密的完整备份
+// @Description 密码至少 12 个字符；填写时分块加密整个 ZIP 并下载 .zip.enc，留空下载原 ZIP。密码不存储、不写日志或审计，审计仅标记是否加密；完整传输完成后记录下载时间，部分 Range 不算成功下载。服务器自动备份不加密。离线 backup-unlock 使用环境变量或标准输入接收密码。
+// @Tags 系统设置
+// @Security AdminBearer
+// @Accept json
+// @Produce application/octet-stream,application/zip
+// @Param name path string true "备份名称"
+// @Param body body automation.BackupExportInput true "可选下载密码，不能通过 URL 传递"
+// @Success 200 {string} string "完整备份文件"
+// @Failure 400,401,403,404,409,429,500 {object} Envelope
+// @Router /api/v1/admin/system/backups/{name}/export [post]
+func ExportAdminBackup() {}

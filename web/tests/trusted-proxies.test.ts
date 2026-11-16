@@ -3,6 +3,7 @@ import {
   INTERNAL_TRUSTED_PROXIES,
   CLOUDFLARE_TRUSTED_PROXIES,
   mergeTrustedProxies,
+  hasCloudflareProxies,
 } from "../src/lib/trusted-proxies";
 
 describe("受信代理网段合并", () => {
@@ -47,4 +48,15 @@ describe("受信代理网段合并", () => {
     expect(new Set(all).size).toBe(30);
     expect(mergeTrustedProxies("", all)).toBe(all.join("\n"));
   });
+});
+it("全部 Cloudflare 网段填入后可隐藏检测提示，缺少一个时不能隐藏", () => {
+  expect(hasCloudflareProxies(CLOUDFLARE_TRUSTED_PROXIES.join("\n"))).toBe(
+    true,
+  );
+  expect(
+    hasCloudflareProxies(CLOUDFLARE_TRUSTED_PROXIES.slice(1).join("\n")),
+  ).toBe(false);
+  expect(hasCloudflareProxies(CLOUDFLARE_TRUSTED_PROXIES.join(", "))).toBe(
+    true,
+  );
 });

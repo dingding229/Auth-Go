@@ -259,6 +259,38 @@
                 },
                 "type": "object"
             },
+            "apidocs.BackupList": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/automation.BackupInfo"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/automation.BackupStatus"
+                    },
+                    "total": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "apidocs.BackupListResponse": {
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/apidocs.BackupList"
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "apidocs.ChangePasswordRequest": {
                 "properties": {
                     "new_password": {
@@ -1033,6 +1065,20 @@
                 },
                 "type": "object"
             },
+            "apidocs.SystemSettingsResponse": {
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/automation.SystemSettings"
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "apidocs.TrialSettingsResponse": {
                 "properties": {
                     "code": {
@@ -1567,6 +1613,77 @@
                 },
                 "type": "object"
             },
+            "automation.BackupExportInput": {
+                "properties": {
+                    "password": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "automation.BackupInfo": {
+                "properties": {
+                    "bundle_ready": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "size": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "automation.BackupStatus": {
+                "properties": {
+                    "days_without_download": {
+                        "type": "integer"
+                    },
+                    "download_overdue": {
+                        "type": "boolean"
+                    },
+                    "last_downloaded_at": {
+                        "type": "string"
+                    },
+                    "started_at": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "automation.SMTP": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "from": {
+                        "type": "string"
+                    },
+                    "has_password": {
+                        "type": "boolean"
+                    },
+                    "host": {
+                        "type": "string"
+                    },
+                    "mode": {
+                        "type": "string"
+                    },
+                    "password_encrypted": {
+                        "type": "string"
+                    },
+                    "port": {
+                        "type": "integer"
+                    },
+                    "username": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "automation.SMTPInput": {
                 "properties": {
                     "enabled": {
@@ -1633,6 +1750,64 @@
                         "default": 14,
                         "maximum": 365,
                         "minimum": 1,
+                        "type": "integer"
+                    },
+                    "trusted_proxies": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "type": "object"
+            },
+            "automation.SystemSettings": {
+                "properties": {
+                    "admin_notification_emails": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "client_ip_burst": {
+                        "type": "integer"
+                    },
+                    "client_ip_rate": {
+                        "type": "integer"
+                    },
+                    "client_license_burst": {
+                        "type": "integer"
+                    },
+                    "client_license_rate": {
+                        "type": "integer"
+                    },
+                    "cloudflare_ip_seen": {
+                        "type": "boolean"
+                    },
+                    "log_retention_days": {
+                        "type": "integer"
+                    },
+                    "notification_retention_days": {
+                        "type": "integer"
+                    },
+                    "pack_image_tag": {
+                        "type": "string"
+                    },
+                    "public_url": {
+                        "type": "string"
+                    },
+                    "server_version": {
+                        "type": "string"
+                    },
+                    "site_name": {
+                        "type": "string"
+                    },
+                    "smtp": {
+                        "$ref": "#/components/schemas/automation.SMTP"
+                    },
+                    "trial_days": {
                         "type": "integer"
                     },
                     "trusted_proxies": {
@@ -11556,7 +11731,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                    "$ref": "#/components/schemas/apidocs.BackupListResponse"
                                 }
                             }
                         },
@@ -11840,6 +12015,166 @@
                     }
                 ],
                 "summary": "系统设置 GET /system/backups/:name",
+                "tags": [
+                    "系统设置"
+                ]
+            }
+        },
+        "/api/v1/admin/system/backups/{name}/export": {
+            "post": {
+                "description": "密码至少 12 个字符；填写时分块加密整个 ZIP 并下载 .zip.enc，留空下载原 ZIP。密码不存储、不写日志或审计，审计仅标记是否加密；完整传输完成后记录下载时间，部分 Range 不算成功下载。服务器自动备份不加密。离线 backup-unlock 使用环境变量或标准输入接收密码。",
+                "parameters": [
+                    {
+                        "description": "备份名称",
+                        "in": "path",
+                        "name": "name",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/automation.BackupExportInput",
+                                "summary": "body",
+                                "description": "可选下载密码，不能通过 URL 传递"
+                            }
+                        }
+                    },
+                    "description": "可选下载密码，不能通过 URL 传递",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            },
+                            "application/zip": {
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "description": "完整备份文件"
+                    },
+                    "400": {
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            },
+                            "application/zip": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            },
+                            "application/zip": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "403": {
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            },
+                            "application/zip": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            },
+                            "application/zip": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "409": {
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            },
+                            "application/zip": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "429": {
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            },
+                            "application/zip": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            },
+                            "application/zip": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    }
+                },
+                "security": [
+                    {
+                        "AdminBearer": []
+                    }
+                ],
+                "summary": "下载可选密码加密的完整备份",
                 "tags": [
                     "系统设置"
                 ]
@@ -12582,12 +12917,13 @@
         },
         "/api/v1/admin/system/settings": {
             "get": {
+                "description": "cloudflare_ip_seen 仅检查最近 200 条验证日志；server_version 和 pack_image_tag 为只读构建信息。",
                 "responses": {
                     "200": {
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                    "$ref": "#/components/schemas/apidocs.SystemSettingsResponse"
                                 }
                             }
                         },

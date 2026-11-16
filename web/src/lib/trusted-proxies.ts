@@ -47,3 +47,10 @@ export function mergeTrustedProxies(
     ),
   ].join("\n");
 }
+
+export function hasCloudflareProxies(current: string): boolean {
+  const rows = new Set(
+    current.split(/[\n,]/).map((line) => line.trim().toLowerCase()),
+  );
+  return CLOUDFLARE_TRUSTED_PROXIES.every((cidr) => rows.has(cidr));
+}

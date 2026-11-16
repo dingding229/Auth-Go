@@ -24,13 +24,20 @@ import DockerHubSync from "./DockerHubSync.vue";
 import AutoPublish from "./AutoPublish.vue";
 import PayloadKeys from "./PayloadKeys.vue";
 import { type Row } from "../lib/json";
-const props = defineProps<{ id: string; config: string; application: Row }>();
+const props = defineProps<{
+  id: string;
+  config: string;
+  application: Row;
+  packImageTag?: string;
+}>();
+const savedEncryption = ref<boolean>();
 const encrypted = ref(false),
   currentKey = ref<Row>(),
   appKey = ref("");
 const encryption = computed<EncryptionBuild | undefined>(() =>
   encrypted.value && currentKey.value && appKey.value
     ? {
+        packImageTag: props.packImageTag,
         keyId: String(currentKey.value.key_id),
         publicKey: String(currentKey.value.public_key),
         appKey: appKey.value,
@@ -49,7 +56,8 @@ function restorePublishing(value: {
   mode: string;
   encrypted: boolean;
 }) {
-  if (!selectionTouched.has("language")) language.value = value.language as DockerLanguage;
+  if (!selectionTouched.has("language"))
+    language.value = value.language as DockerLanguage;
   if (!selectionTouched.has("mode")) mode.value = value.mode as PHPMode;
   if (!selectionTouched.has("encrypted")) encrypted.value = value.encrypted;
 }
@@ -67,6 +75,7 @@ watch(
     step.value = "image";
     selectionTouched.clear();
     encrypted.value = false;
+    savedEncryption.value = undefined;
     currentKey.value = undefined;
     image.value = savedImage.value = String(
       props.application.docker_image || "",
@@ -162,6 +171,15 @@ async function save() {
               aria-label="代码加密"
               @change="selectionTouched.add('encrypted')"
             />
+            <span
+              v-if="
+                savedEncryption !== undefined && encrypted !== savedEncryption
+              "
+              class="field-hint"
+              title="仅指自动发布；手动导出立即使用当前开关"
+            >
+              自动发布：保存仓库配置后才生效
+            </span>
           </el-form-item>
         </el-form>
         <template v-if="encrypted">
@@ -199,7 +217,11 @@ async function save() {
               v-if="language === 'PHP'"
               label="PHP运行方式（请选择与业务一致的模式）"
             >
-              <el-radio-group v-model="mode" aria-label="PHP运行方式" @change="selectionTouched.add('mode')">
+              <el-radio-group
+                v-model="mode"
+                aria-label="PHP运行方式"
+                @change="selectionTouched.add('mode')"
+              >
                 <el-radio
                   v-for="option in phpModes"
                   :key="option.value"
@@ -287,6 +309,7 @@ async function save() {
           :encrypted="encrypted"
           :ready="ready && encryptionReady"
           @selection="restorePublishing"
+          @saved-encryption="savedEncryption = $event"
         />
         <p>
           也可手动复制同一份工作流到

@@ -17,6 +17,10 @@ import (
 
 var backupName = regexp.MustCompile(`^authgo-[0-9]{8}T[0-9]{6}Z-[a-zA-Z0-9_-]+\.db$`)
 
+type BackupExportInput struct {
+	Password string `json:"password"`
+}
+
 type BackupInfo struct {
 	Name        string    `json:"name"`
 	Size        int64     `json:"size"`

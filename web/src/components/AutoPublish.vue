@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { get, post, patch } from "../lib/http";
-import { useTask, useLoadTask } from "../composables/tasks";
+import { useTask, useLoadTask, confirmAction } from "../composables/tasks";
 import { dateText, rows, type Row } from "../lib/json";
 import RequestNotice from "./RequestNotice.vue";
 const props = defineProps<{
@@ -12,11 +12,13 @@ const props = defineProps<{
   ready: boolean;
 }>();
 const emit = defineEmits<{
+  "saved-encryption": [value: boolean];
   selection: [value: { language: string; mode: string; encrypted: boolean }];
 }>();
 const task = useTask(),
   loadTask = useLoadTask(),
   runTask = useLoadTask();
+const savedEncryption = ref<boolean>();
 const repository = ref(""),
   branch = ref("main"),
   saved = ref(""),
@@ -74,6 +76,8 @@ async function load() {
       mode: String(result.mode || "cli"),
       encrypted: Boolean(result.encrypted),
     });
+    savedEncryption.value = Boolean(result.encrypted);
+    emit("saved-encryption", savedEncryption.value);
     loaded.value = true;
     if (repository.value) void loadRuns();
   });
@@ -111,6 +115,8 @@ async function save() {
     await patch(`/applications/${id}/publishing`, body);
     if (serial === generation) {
       saved.value = JSON.stringify(body);
+      savedEncryption.value = body.encrypted;
+      emit("saved-encryption", body.encrypted);
       branch.value = body.branch;
       runs.value = [];
       awaitingRun.value = false;
@@ -125,6 +131,15 @@ async function action(kind: "test" | "sync" | "dispatch") {
       const id = props.id,
         serial = generation;
       if (dirty.value) throw new Error("请先保存仓库与构建选项");
+      if (kind === "sync") {
+        await confirmAction(
+          `将向 GitHub 仓库 ${config.value.repository} 写入或覆盖工作流文件 .github/workflows/authgo-publish.yml，并同步发布 Secrets 与 Variable。确认继续？`,
+          "同步配置到仓库",
+          { action: "同步配置到仓库", danger: true },
+        );
+        if (serial !== generation || dirty.value)
+          throw new Error("仓库配置已变化，请重新确认");
+      }
       if (kind === "dispatch")
         previousRuns = new Set(runs.value.map((run) => String(run.id)));
       await post(
@@ -197,10 +212,18 @@ function runText(run: Row) {
           encrypted ? "代码加密" : "不加密"
         }}。修改语言或加密选项后须重新保存并同步。
       </p>
+      <p
+        v-if="savedEncryption !== undefined && encrypted !== savedEncryption"
+        class="field-hint"
+      >
+        自动发布：保存仓库配置后才生效
+      </p>
       <div class="action-toolbar">
         <el-button native-type="submit" :loading="task.busy.value">
           保存仓库与构建选项
         </el-button>
+      </div>
+      <div class="action-toolbar">
         <el-button
           :disabled="busy || dirty || !repository || !ready"
           @click="action('test')"

@@ -60,6 +60,9 @@ func New(database *gorm.DB, master []byte, log *slog.Logger, opts Options) (*Ser
 		return nil, err
 	}
 
+	if err = s.initBackupStatus(); err != nil {
+		return nil, err
+	}
 	return s, nil
 }
 func (s *Service) SetApply(fn func(Settings)) {

@@ -77,7 +77,7 @@ docker push your-org/your-app:1.2.3
 
 ## 4. 代码加密（可选）
 
-authgo-pack 已内置在 `docker.io/dingding229/authgo` 镜像中，代码加密构建会自动使用，无需配置。
+authgo-pack 已内置在 `docker.io/dingding229/authgo` 镜像中，代码加密构建会自动使用，无需配置。生成模板和工作流使用当前服务的正式版本标签（去掉前缀 v），开发构建回退 latest 并注明。需要更强保证时，用 `docker buildx imagetools inspect docker.io/dingding229/authgo:1.0.2` 查看 Digest，将 Dockerfile 和工作流中镜像的 `:标签` 都替换为 `@sha256:摘要`；镜像自己的摘要在构建完成后才产生，无法写回同一次构建的二进制，不进行运行时仓库查询。
 
 1. 软件详情“打包密钥”创建密钥，复制 key_id 和打包公钥。
 2. 向导开启代码加密，填入构建信息，复制受保护模板和构建命令。
@@ -109,7 +109,7 @@ Go/Rust 内存执行优先 memfd，受限时只回退可执行 tmpfs；两者不
 离线扫描（替换命令中的软件标记和导出文件名）：
 
 ```sh
-docker run --rm --entrypoint /authgo-pack -v "$PWD:/work:ro" docker.io/dingding229/authgo:1.0.0 trace --tag '替换为软件标记' '/work/替换为导出文件'
+docker run --rm --entrypoint /authgo-pack -v "$PWD:/work:ro" docker.io/dingding229/authgo:1.0.2 trace --tag '替换为软件标记' '/work/替换为导出文件'
 ```
 
 ZIP/JAR 会扫描解压条目及嵌套 JAR；其他压缩格式按普通字节扫描。零槽不是授权值。槽位、限额和结果定义见[水印规范](?tab=protocol#9-水印)。水印仅事后辅助追查，不是授权证据，也不保证无法抹除。

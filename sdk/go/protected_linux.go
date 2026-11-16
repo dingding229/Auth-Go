@@ -86,7 +86,7 @@ func RunProtected(args, environment []string, stderr io.Writer) int {
 	prepared, e := prepareProtected(image, key)
 	clear(key)
 	if e != nil {
-		fmt.Fprintln(stderr, "受保护程序解密失败或没有可执行的内存文件系统，请检查memfd、tmpfs及容器安全策略")
+		fmt.Fprintln(stderr, "无法准备受保护程序：解密失败，或宿主机禁止 memfd 且没有可写的 tmpfs；请提供允许执行的 tmpfs（/dev/shm 或 /tmp），并检查容器 seccomp 与宿主机安全策略")
 		return ExitLicense
 	}
 	defer prepared.Close()
@@ -112,7 +112,7 @@ func RunProtected(args, environment []string, stderr io.Writer) int {
 			exec(fallback)
 		}
 	}
-	fmt.Fprintln(stderr, "无法执行受保护程序：memfd和tmpfs均不可执行，或镜像缺少动态解释器及库")
+	fmt.Fprintln(stderr, "无法执行受保护程序：宿主机禁止内存执行，且没有可执行的临时目录，或镜像缺少动态解释器及库；请提供允许执行的 tmpfs（/dev/shm 或 /tmp），检查容器与宿主机策略及动态运行库，不要使用持久磁盘存放明文")
 	return ExitLicense
 }
 func protectedErrorCode(err error) string {

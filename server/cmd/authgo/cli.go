@@ -16,6 +16,9 @@ func command(args []string, out io.Writer) (handled bool, err error) {
 	if len(args) == 0 {
 		return false, nil
 	}
+	if args[0] == "backup-unlock" {
+		return true, unlockBackup(args, os.Stdin, out)
+	}
 	if args[0] == "admin-path" {
 		if len(args) > 2 || (len(args) == 2 && args[1] != "reset") {
 			return true, fmt.Errorf("用法: authgo admin-path [reset]")
@@ -34,7 +37,7 @@ func command(args []string, out io.Writer) (handled bool, err error) {
 		return true, e
 	}
 	if len(args) != 1 {
-		return true, fmt.Errorf("用法: authgo [version|healthcheck|admin-path [reset]|help]")
+		return true, fmt.Errorf("用法: authgo [version|healthcheck|admin-path [reset]|backup-unlock <备份文件> <输出.zip>|help]")
 	}
 	switch args[0] {
 	case "version", "--version":
@@ -47,9 +50,9 @@ func command(args []string, out io.Writer) (handled bool, err error) {
 			_, err = fmt.Fprintln(out, "健康检查通过")
 		}
 	case "help", "--help", "-h":
-		_, err = fmt.Fprintln(out, "用法: authgo [version|healthcheck|admin-path [reset]|help]\n不带参数启动服务；配置使用 AUTHGO_ 环境变量。")
+		_, err = fmt.Fprintln(out, "用法: authgo [version|healthcheck|admin-path [reset]|backup-unlock <备份文件> <输出.zip>|help]\n不带参数启动服务；配置使用 AUTHGO_ 环境变量。")
 	default:
-		err = fmt.Errorf("未知命令 %q；用法: authgo [version|healthcheck|admin-path [reset]|help]", args[0])
+		err = fmt.Errorf("未知命令 %q；用法: authgo [version|healthcheck|admin-path [reset]|backup-unlock <备份文件> <输出.zip>|help]", args[0])
 	}
 	return true, err
 }

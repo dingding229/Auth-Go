@@ -1,4 +1,6 @@
 import "./admin-bootstrap";
+vi.mock("../src/lib/files", () => ({ saveBlob: vi.fn() }));
+import { saveBlob } from "../src/lib/files";
 import { afterEach, expect, it, vi } from "vitest";
 import { createApp, nextTick, type App, type Component } from "vue";
 import { createPinia } from "pinia";
@@ -420,4 +422,109 @@ it("受信代理按钮合并当前草稿，不自动保存且不重置其他字�
       { trusted_proxies: expected, site_name: "尚未保存的站点" },
     ]),
   );
+});
+
+it("Cloudflare 检测提示仅在网段未填全时显示", async () => {
+  respond((url) => {
+    if (url === "/system/settings")
+      return {
+        cloudflare_ip_seen: true,
+        site_name: "Auth Go",
+        trusted_proxies: [],
+        client_ip_rate: 10,
+        client_ip_burst: 60,
+        client_license_rate: 5,
+        client_license_burst: 30,
+        smtp: {},
+      };
+    return { items: [] };
+  });
+  await mount(SettingsView);
+  const warning =
+    "最近记录到的客户端 IP 属于 Cloudflare 节点，请点击“填入 Cloudflare”并保存。";
+  await vi.waitFor(() => expect(root.textContent).toContain(warning));
+  buttons("填入 Cloudflare")[0]!.click();
+  await nextTick();
+  expect(root.textContent).not.toContain(warning);
+});
+it("备份密码只放请求体，填写下载加密包，留空沿用 ZIP 下载", async () => {
+  const exports: { method: string; url: string; body?: unknown }[] = [];
+  const name = "authgo-20261116T030000Z-test.db";
+  http.defaults.adapter = async (config) => {
+    let data: unknown = { items: [] };
+    let headers = new AxiosHeaders();
+    if (config.url === "/system/settings")
+      data = { site_name: "Auth Go", trusted_proxies: [], smtp: {} };
+    if (config.url === "/system/backups")
+      data = {
+        items: [{ name, size: 100, created_at: "2026-11-16T03:00:00Z" }],
+      };
+    if (String(config.url).startsWith("/system/backups/")) {
+      const encrypted = config.method === "post";
+      exports.push({
+        method: String(config.method),
+        url: String(config.url),
+        body: config.data ? JSON.parse(String(config.data)) : undefined,
+      });
+      data = new Blob(["backup bytes"]);
+      headers = new AxiosHeaders({
+        "content-type": encrypted
+          ? "application/octet-stream"
+          : "application/zip",
+        "content-disposition": `attachment; filename="${name}.zip${encrypted ? ".enc" : ""}"`,
+      });
+      return { config, status: 200, statusText: "", headers, data };
+    }
+    return {
+      config,
+      status: 200,
+      statusText: "",
+      headers,
+      data: { code: "OK", data },
+    };
+  };
+  await mount(SettingsView);
+  const desktopDownload = () =>
+    buttons("下载完整包").filter((button) => button.closest(".table-scroll"));
+  await vi.waitFor(() => {
+    expect(desktopDownload()).toHaveLength(1);
+    expect(
+      buttons("下载完整包").filter((button) => button.closest(".table-cards")),
+    ).toHaveLength(1);
+  });
+  const tab = [...root.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+    (node) => node.textContent === "数据库备份",
+  )!;
+  tab.click();
+  await vi.waitFor(() =>
+    expect(
+      root.querySelector('[role="tab"][aria-selected="true"]')?.textContent,
+    ).toBe("数据库备份"),
+  );
+  const input = root.querySelector<HTMLInputElement>(
+    'input[aria-label="备份下载密码"]',
+  )!;
+  input.value = "private backup password";
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  await nextTick();
+  desktopDownload()[0]!.click();
+  await vi.waitFor(() => expect(exports).toHaveLength(1));
+  await vi.waitFor(() => expect(input.value).toBe(""));
+  expect(exports[0]).toEqual({
+    method: "post",
+    url: `/system/backups/${name}/export`,
+    body: { password: "private backup password" },
+  });
+  expect(root.textContent).not.toContain("private backup password");
+  expect(saveBlob).toHaveBeenCalledWith(expect.any(Blob), name + ".zip.enc");
+  await vi.waitFor(() =>
+    expect(desktopDownload()[0]?.disabled).toBe(false),
+  );
+  desktopDownload()[0]!.click();
+  await vi.waitFor(() => expect(exports).toHaveLength(2));
+  expect(exports[1]).toEqual({
+    method: "get",
+    url: `/system/backups/${name}`,
+    body: undefined,
+  });
 });

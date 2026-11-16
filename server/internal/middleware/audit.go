@@ -91,6 +91,11 @@ func Audit(database *gorm.DB, log *slog.Logger, auditedReads ...string) gin.Hand
 					entry.Operator = clip(name, 128)
 				}
 			}
+			if encrypted, ok := c.Get("audit_backup_encrypted"); ok {
+				if value, valid := encrypted.(bool); valid {
+					entry.Details["encrypted"] = value
+				}
+			}
 			entry.StatusCode = status
 			entry.Summary = fmt.Sprintf("%s %s → %d (%s)", c.Request.Method, route, status, code)
 			// A panic has not yet reached the outer recovery middleware. Keep the
@@ -98,7 +103,7 @@ func Audit(database *gorm.DB, log *slog.Logger, auditedReads ...string) gin.Hand
 			if value := recover(); value != nil {
 				entry.StatusCode = 500
 				entry.Summary = "管理请求发生异常"
-				entry.Details = map[string]any{"code": "INTERNAL_ERROR"}
+				entry.Details["code"] = "INTERNAL_ERROR"
 				finishAudit(database, log, &entry)
 				panic(value)
 			}

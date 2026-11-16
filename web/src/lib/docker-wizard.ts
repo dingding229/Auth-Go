@@ -98,7 +98,7 @@ export function githubActions(
       : dockerTemplate(language, mode)
   ).directory;
   const payload = encryption
-    ? `            PAYLOAD_PUBLIC_KEY=${encryption.publicKey}\n            PAYLOAD_KEY_ID=${encryption.keyId}\n            PAYLOAD_APP_KEY=${encryption.appKey}\n`
+    ? `            AUTHGO_PACK_IMAGE=${packImage(encryptionTag(encryption))}\n            PAYLOAD_PUBLIC_KEY=${encryption.publicKey}\n            PAYLOAD_KEY_ID=${encryption.keyId}\n            PAYLOAD_APP_KEY=${encryption.appKey}\n`
     : "";
   const fpm =
     language === "PHP" && mode === "fpm"
@@ -114,11 +114,14 @@ export function githubActions(
             ${image}-nginx:latest
 `
       : "";
-  return workflowTemplate
+  const workflow = workflowTemplate
     .replaceAll("@DIRECTORY@", dir)
     .replaceAll("@IMAGE@", image)
     .replaceAll("@PAYLOAD_ARGS@", payload)
     .replaceAll("@FPM_STEP@", fpm);
+  return encryption && encryptionTag(encryption) === "latest"
+    ? `# ${developmentImageNote}\n` + workflow
+    : workflow;
 }
 // Core integration only. Full tested lifecycle programs are provided alongside
 // Dockerfiles, so signals and process exit stay in the business application.
@@ -206,7 +209,17 @@ export interface EncryptionBuild {
   keyId: string;
   publicKey: string;
   appKey: string;
+  packImageTag?: string;
 }
+const developmentImageNote =
+  "开发构建没有正式版本号，打包工具使用 latest；发布时请改用固定版本或摘要。";
+function encryptionTag(e: EncryptionBuild): string {
+  const tag = e.packImageTag || "";
+  return /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/.test(tag)
+    ? tag
+    : "latest";
+}
+const packImage = (tag: string) => `docker.io/dingding229/authgo:${tag}`;
 export function validateEncryptionBuild(e: EncryptionBuild): void {
   if (
     !/^[a-z0-9_-]{1,128}$/.test(e.keyId) ||
@@ -231,11 +244,14 @@ export function protectedTemplate(
   )[key];
   if (!source) throw new Error("加密示例尚未就绪");
   const files = { ...source.files };
-  files.Dockerfile = files
-    .Dockerfile!.replace(/^ARG AUTHGO_TOOLS_IMAGE=.*\r?\n/m, "")
-    .replace(
-      "FROM ${AUTHGO_TOOLS_IMAGE} AS tools",
-      "FROM docker.io/dingding229/authgo:1.0.0 AS tools",
+  files.Dockerfile = files.Dockerfile!.replace(
+    /^ARG AUTHGO_PACK_IMAGE=.*$/m,
+    `ARG AUTHGO_PACK_IMAGE=${packImage(encryptionTag(e))}`,
+  );
+  if (encryptionTag(e) === "latest")
+    files.Dockerfile = files.Dockerfile.replace(
+      "\n",
+      `\n# ${developmentImageNote}\n`,
     );
   for (const [arg, value] of Object.entries({
     PAYLOAD_PUBLIC_KEY: e.publicKey,

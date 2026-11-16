@@ -137,7 +137,7 @@ def build(lang,config,key,qa):
  inject_probe(lang,directory)
  (directory/'Dockerfile').write_text(dockerfile)
  image=PREFIX+lang;d.images.append(image);args=['docker','build','--memory=1536m','-f','examples/docker-protected/'+lang+'/Dockerfile','-t',image]
- for k,v in {'AUTHGO_TOOLS_IMAGE':TOOLS or d.IMAGE,'AUTHGO_CONFIG':config,'VERSION':'1.0.0','PAYLOAD_PUBLIC_KEY':key['public_key'],'PAYLOAD_KEY_ID':key['key_id'],'PAYLOAD_APP_KEY':d.state['app']['app_key']}.items():args+=['--build-arg',k+'='+v]
+ for k,v in {'AUTHGO_PACK_IMAGE':TOOLS or d.IMAGE,'AUTHGO_CONFIG':config,'VERSION':'1.0.0','PAYLOAD_PUBLIC_KEY':key['public_key'],'PAYLOAD_KEY_ID':key['key_id'],'PAYLOAD_APP_KEY':d.state['app']['app_key']}.items():args+=['--build-arg',k+'='+v]
  args+=['.'];h.checked(args,context,(config,));return image,context
 
 def inject_probe(lang,directory):

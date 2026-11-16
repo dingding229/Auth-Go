@@ -498,3 +498,33 @@ it("用户详情的授权、设备和记录使用精简列，默认列宽均适�
     );
   }
 });
+
+it("超过七天未下载备份时显示提醒并链接到备份区", async () => {
+  const original = http.defaults.adapter;
+  if (typeof original !== "function") throw new Error("测试适配器未初始化");
+  http.defaults.adapter = async (config) =>
+    config.url === "/system/backups"
+      ? {
+          config,
+          status: 200,
+          statusText: "",
+          headers: new AxiosHeaders(),
+          data: {
+            code: "OK",
+            data: {
+              items: [],
+              status: { download_overdue: true, days_without_download: 8 },
+            },
+          },
+        }
+      : original(config);
+  await mountRoute("/", DashboardView);
+  await vi.waitFor(() =>
+    expect(root.textContent).toContain(
+      "备份只保存在本机磁盘，已 8 天没有下载。请下载一份并异地保存。",
+    ),
+  );
+  expect(
+    root.querySelector('a[href="/admin/settings?tab=backups"]'),
+  ).not.toBeNull();
+});

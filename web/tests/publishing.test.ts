@@ -1,6 +1,6 @@
 import "./admin-bootstrap";
 import { afterEach, expect, it, vi } from "vitest";
-import { createApp, nextTick, type App, type Component } from "vue";
+import { createApp, nextTick, h, ref, type App, type Component } from "vue";
 import ElementPlus from "element-plus";
 import { AxiosHeaders } from "axios";
 import { http } from "../src/lib/http";
@@ -365,4 +365,94 @@ it("验证失败分别显示两个平台的原因，不显示成功状态", asyn
   );
   expect(root.textContent).toContain("Docker Hub 用户名或访问令牌无效");
   expect(root.textContent).not.toContain("已验证：");
+});
+it("取消同步确认不会写仓库，确认提示包含目标仓库", async () => {
+  const writes: string[] = [];
+  http.defaults.adapter = async (config) => {
+    if (config.method === "post") writes.push(String(config.url));
+    return {
+      config,
+      status: 200,
+      statusText: "",
+      headers: new AxiosHeaders(),
+      data: {
+        code: "OK",
+        data: config.url?.endsWith("/runs")
+          ? { items: [] }
+          : {
+              repository: "owner/repo",
+              branch: "main",
+              language: "Go",
+              mode: "cli",
+              encrypted: false,
+            },
+      },
+    };
+  };
+  mount(AutoPublish, {
+    id: "7",
+    language: "Go",
+    mode: "cli",
+    encrypted: false,
+    ready: true,
+  });
+  await vi.waitFor(() =>
+    expect(button("同步配置到仓库")?.disabled).toBe(false),
+  );
+  vi.mocked(confirmAction).mockRejectedValueOnce("cancel");
+  button("同步配置到仓库").click();
+  await nextTick();
+  expect(confirmAction).toHaveBeenCalledWith(
+    expect.stringContaining("将向 GitHub 仓库 owner/repo 写入或覆盖工作流文件"),
+    "同步配置到仓库",
+    { action: "同步配置到仓库", danger: true },
+  );
+  expect(writes).toEqual([]);
+});
+
+it("自动发布的加密选项与已保存值不同时提示，保存后消失", async () => {
+  let saved = false;
+  http.defaults.adapter = async (config) => {
+    if (config.method === "patch")
+      saved = Boolean(JSON.parse(String(config.data)).encrypted);
+    return {
+      config,
+      status: 200,
+      statusText: "",
+      headers: new AxiosHeaders(),
+      data: {
+        code: "OK",
+        data: config.url?.endsWith("/runs")
+          ? { items: [] }
+          : {
+              repository: "owner/repo",
+              branch: "main",
+              language: "Go",
+              mode: "cli",
+              encrypted: saved,
+            },
+      },
+    };
+  };
+  const encrypted = ref(false);
+  mount({
+    setup: () => () =>
+      h(AutoPublish, {
+        id: "7",
+        language: "Go",
+        mode: "cli",
+        encrypted: encrypted.value,
+        ready: true,
+      }),
+  });
+  await vi.waitFor(() => expect(button("保存仓库与构建选项")).toBeDefined());
+  expect(root.textContent).not.toContain("保存仓库配置后才生效");
+  encrypted.value = true;
+  await nextTick();
+  expect(root.textContent).toContain("保存仓库配置后才生效");
+  button("保存仓库与构建选项").click();
+  await vi.waitFor(() => expect(saved).toBe(true));
+  await vi.waitFor(() =>
+    expect(root.textContent).not.toContain("保存仓库配置后才生效"),
+  );
 });

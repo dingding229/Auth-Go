@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
-ARG AUTHGO_TOOLS_IMAGE=docker.io/dingding229/authgo:1.0.0
-FROM ${AUTHGO_TOOLS_IMAGE} AS tools
+ARG AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:latest
+FROM ${AUTHGO_PACK_IMAGE} AS tools
 FROM eclipse-temurin:17-jdk AS build
 COPY --from=tools /authgo-pack /usr/local/bin/authgo-pack
 COPY sdk/java/src/main/java/ /src/sdk/

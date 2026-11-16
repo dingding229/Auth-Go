@@ -20,6 +20,7 @@ import ChartPanel from "../../components/ChartPanel.vue";
 const task = useLoadTask(),
   router = useRouter(),
   overview = ref<Row>(),
+  backupStatus = ref<Row>({}),
   trend = ref<Row[]>([]),
   failures = ref<Row[]>([]),
   firstApplicationId = ref(""),
@@ -27,12 +28,14 @@ const task = useLoadTask(),
 const counts = computed(() => record(overview.value?.counts));
 async function load() {
   await task.run(async () => {
-    const [o, t, f] = await Promise.all([
+    const [o, t, f, backups] = await Promise.all([
       get("/stats/overview"),
       get("/stats/trend"),
       get("/stats/failures"),
+      get("/system/backups"),
     ]);
     overview.value = o;
+    backupStatus.value = record(backups.status);
     trend.value = rows(t.items);
     failures.value = rows(f.items);
     firstApplicationId.value = "";
@@ -202,6 +205,24 @@ const cards = computed(() => {
 });
 </script>
 <template>
+  <el-alert
+    v-if="backupStatus.download_overdue"
+    type="warning"
+    :closable="false"
+    show-icon
+  >
+    <template #title>
+      备份只保存在本机磁盘，已
+      {{
+        backupStatus.days_without_download
+      }}
+      天没有下载。请下载一份并异地保存。
+    </template>
+    <router-link :to="adminPage('/settings?tab=backups')">
+      前往数据库备份
+    </router-link>
+  </el-alert>
+
   <page-heading
     title="概览"
     description="观察授权生命周期。验证统计基于已保留日志，按UTC自然日计算；采样或清理会影响数量。"
@@ -232,14 +253,15 @@ const cards = computed(() => {
           :disabled="!step.to"
           @click="step.to && router.push(step.to)"
         >
-          <span class="step-marker" aria-hidden="true">{{
-            step.complete ? "✓" : index + 1
-          }}</span>
-          <span>{{ step.title
-          }}<span
-            v-if="step.complete"
-            class="visually-hidden"
-          >（已完成）</span></span>
+          <span class="step-marker" aria-hidden="true">
+            {{ step.complete ? "✓" : index + 1 }}
+          </span>
+          <span>
+            {{ step.title }}
+            <span v-if="step.complete" class="visually-hidden">
+              （已完成）
+            </span>
+          </span>
         </button>
       </li>
     </ol>
@@ -266,12 +288,14 @@ const cards = computed(() => {
     <section-panel>
       <div class="panel-heading">
         <h2>近30天验证趋势</h2>
-        <span class="muted">今日失败率
+        <span class="muted">
+          今日失败率
           {{
             overview
               ? `${(Number(overview.today_failure_rate) * 100).toFixed(1)}%`
               : "—"
-          }}</span>
+          }}
+        </span>
       </div>
       <el-skeleton
         v-if="!overview && task.busy.value"
@@ -309,7 +333,8 @@ const cards = computed(() => {
         v-else-if="failures.length"
         :option="failureOption"
         label="近三十天验证失败原因分布"
-      /><el-empty
+      />
+      <el-empty
         v-else-if="overview"
         :description="overview ? '近30天暂无失败记录' : '数据尚未加载'"
       />
@@ -328,9 +353,7 @@ const cards = computed(() => {
     <section-panel class="full-width">
       <div class="panel-heading">
         <h2>即将到期的授权</h2>
-        <router-link :to="adminPage('/licenses')">
-          查看全部授权
-        </router-link>
+        <router-link :to="adminPage('/licenses')">查看全部授权</router-link>
       </div>
       <data-table
         :error="task.error.value"

@@ -3,6 +3,7 @@ package publishing
 
 import (
 	"authgo/internal/apperror"
+	"authgo/internal/buildinfo"
 	"authgo/internal/model"
 	"authgo/internal/payloadkey"
 	_ "embed"
@@ -47,11 +48,16 @@ func renderWorkflow(v Config, app model.Application, key payloadkey.Key) (string
 		if !regexp.MustCompile(`^[a-z0-9_-]{1,128}$`).MatchString(key.KeyID) || !regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`).MatchString(key.PublicKey) || !regexp.MustCompile(`^[A-Za-z0-9_-]{1,256}$`).MatchString(app.AppKey) {
 			return "", apperror.Invalid("请先生成当前打包公钥")
 		}
-		args = "            PAYLOAD_PUBLIC_KEY=" + key.PublicKey + "\n            PAYLOAD_KEY_ID=" + key.KeyID + "\n            PAYLOAD_APP_KEY=" + app.AppKey + "\n"
+		tag := buildinfo.PackImageTag()
+		args = "            AUTHGO_PACK_IMAGE=" + buildinfo.PackImage + ":" + tag + "\n" + "            PAYLOAD_PUBLIC_KEY=" + key.PublicKey + "\n            PAYLOAD_KEY_ID=" + key.KeyID + "\n            PAYLOAD_APP_KEY=" + app.AppKey + "\n"
 	}
 	extra := ""
 	if v.Language == "PHP" && v.Mode == "fpm" {
 		extra = "      - name: 构建并推送 FPM nginx\n        uses: docker/build-push-action@v6\n        with:\n          context: .\n          file: " + dir + "/Dockerfile.nginx\n          push: true\n          platforms: linux/amd64,linux/arm64\n          tags: |\n            " + image + "-nginx:${{ steps.release.outputs.version }}\n            " + image + "-nginx:latest\n"
 	}
-	return strings.NewReplacer("@DIRECTORY@", dir, "@IMAGE@", image, "@PAYLOAD_ARGS@", args, "@FPM_STEP@", extra).Replace(workflowTemplate), nil
+	workflow := strings.NewReplacer("@DIRECTORY@", dir, "@IMAGE@", image, "@PAYLOAD_ARGS@", args, "@FPM_STEP@", extra).Replace(workflowTemplate)
+	if v.Encrypted && buildinfo.PackImageTag() == "latest" {
+		workflow = "# " + buildinfo.PackImageDevelopmentNote + "\n" + workflow
+	}
+	return workflow, nil
 }
