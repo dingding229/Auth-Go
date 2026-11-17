@@ -22,7 +22,7 @@ COPY --from=frontend /web/dist/ ./server/internal/webui/dist/
 RUN test -s /src/server/internal/webui/dist/index.html
 ARG TARGETOS
 ARG TARGETARCH
-ARG VERSION=1.0.3
+ARG VERSION=1.0.4
 ARG COMMIT=unknown
 ARG BUILD_TIME=unknown
 WORKDIR /src/server
@@ -47,7 +47,7 @@ RUN test "$TARGETOS" = linux && case "$TARGETARCH" in amd64|arm64) ;; *) exit 1;
     && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags "-s -w" -o /out/authgo-pack ./cmd/authgo-pack
 
 FROM gcr.io/distroless/static-debian12:nonroot AS runtime
-ARG VERSION=1.0.3
+ARG VERSION=1.0.4
 LABEL org.opencontainers.image.title="Auth Go" \
       org.opencontainers.image.description="单实例 SQLite 软件授权服务" \
       org.opencontainers.image.version="${VERSION}"

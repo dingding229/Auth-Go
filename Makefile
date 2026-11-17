@@ -1,6 +1,6 @@
 .PHONY: test-image-pack test-php-protected test-route-contract-cache vendor-swagger-ui docker-build dev-server dev-web build test test-sdks lint docs test-pack build-stubs build-pack
 
-VERSION ?= 1.0.3
+VERSION ?= 1.0.4
 COMMIT ?= unknown
 BUILD_TIME ?= unknown
 LDFLAGS = -s -w -X authgo/internal/buildinfo.Version=$(VERSION) -X authgo/internal/buildinfo.Commit=$(COMMIT) -X authgo/internal/buildinfo.BuiltAt=$(BUILD_TIME)

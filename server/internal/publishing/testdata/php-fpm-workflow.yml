@@ -55,7 +55,7 @@ jobs:
           build-args: |
             AUTHGO_CONFIG=${{ vars.AUTHGO_CONFIG }}
             VERSION=${{ steps.release.outputs.version }}
-            AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:1.0.3
+            AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:1.0.4
             PAYLOAD_PUBLIC_KEY=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
             PAYLOAD_KEY_ID=key_test
             PAYLOAD_APP_KEY=app_test

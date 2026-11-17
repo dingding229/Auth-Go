@@ -115,7 +115,7 @@ func main() {
 authgo-pack 已内置在 `docker.io/dingding229/authgo` 镜像中，代码加密构建会自动使用，无需配置。离线追查可从主镜像运行工具（将占位值替换为软件标记与实际文件名）：
 
 ```sh
-docker run --rm --entrypoint /authgo-pack -v "$PWD:/work:ro" docker.io/dingding229/authgo:1.0.3 trace --tag "<tag>" "/work/<文件>"
+docker run --rm --entrypoint /authgo-pack -v "$PWD:/work:ro" docker.io/dingding229/authgo:1.0.4 trace --tag "<tag>" "/work/<文件>"
 ```
 
 ### 7. 用户中心
@@ -145,7 +145,7 @@ docker run --rm --entrypoint /authgo-pack -v "$PWD:/work:ro" docker.io/dingding2
 docker compose pull && docker compose up -d
 ```
 
-默认镜像使用 `latest`。需要固定版本时，把 Compose 文件中的 `docker.io/dingding229/authgo:latest` 改为 `docker.io/dingding229/authgo:1.0.3`，再执行上面的升级命令。1.0.3 启动时会在同一事务中自动升级 1.0.0–1.0.2 的数据库并保留数据，完成后共 3 条迁移记录；未知迁移记录会被拒绝。旧版本程序不能直接读取升级后的数据库，回滚必须同时恢复升级前的备份和原镜像。
+默认镜像使用 `latest`。需要固定版本时，把 Compose 文件中的 `docker.io/dingding229/authgo:latest` 改为 `docker.io/dingding229/authgo:1.0.4`，再执行上面的升级命令。1.0.3 及以后版本启动时会在同一事务中自动升级 1.0.0–1.0.2 的数据库并保留数据，完成后共 3 条迁移记录；未知迁移记录会被拒绝。旧版本程序不能直接读取升级后的数据库，回滚必须同时恢复升级前的备份和原镜像。
 
 已吊销的正式授权可在详情或列表中永久删除，也可按软件批量清理；激活与会话会删除，验证日志保留。试用及保留试用领取记录的授权不可删除，以免绕过重复领取限制。
 
@@ -157,7 +157,7 @@ docker compose pull && docker compose up -d
 
 #### 离线恢复
 
-恢复是**停机替换**，接受完整 ZIP 和密码加密的 ZIP 包，1.0.3 可接受 1.0.0–1.0.2 的基线备份及包含已知后续迁移的备份，恢复后启动时自动补齐迁移。未知结构或高于当前程序的迁移版本会被拒绝。先停止所有写入 `data` 目录的服务或工具；不要直接覆盖运行中的 SQLite 数据库，不要把旧 WAL/SHM 混入备份快照。
+恢复是**停机替换**，接受完整 ZIP 和密码加密的 ZIP 包，1.0.3 及以后版本可接受 1.0.0–1.0.2 的基线备份及包含已知后续迁移的备份，恢复后启动时自动补齐迁移。未知结构或高于当前程序的迁移版本会被拒绝。先停止所有写入 `data` 目录的服务或工具；不要直接覆盖运行中的 SQLite 数据库，不要把旧 WAL/SHM 混入备份快照。
 
 加密包先解封为 ZIP，再执行下方原有的离线校验及替换步骤；旧的未加密 ZIP 不需要密码，也仍可按原步骤恢复。解封不会修改数据库，错误密码、篡改或截断均失败且不发布输出文件。密码只能由 `AUTHGO_BACKUP_PASSWORD` 或管道标准输入提供，不使用命令行密码参数：
 
@@ -166,7 +166,7 @@ mkdir -p .restore && chmod 700 .restore
 # 将加密备份放入 .restore/backup.zip.enc；在可信终端读取密码，不回显
 read -rs AUTHGO_BACKUP_PASSWORD; export AUTHGO_BACKUP_PASSWORD; printf '\n'
 docker run --rm --memory=256m --user "$(id -u):$(id -g)" --workdir /work -e AUTHGO_BACKUP_PASSWORD -v "$PWD/.restore:/work" \
-  --entrypoint /authgo docker.io/dingding229/authgo:1.0.3 \
+  --entrypoint /authgo docker.io/dingding229/authgo:1.0.4 \
   backup-unlock /work/backup.zip.enc /work/backup.zip
 unset AUTHGO_BACKUP_PASSWORD
 # 解封失败立即停止；成功后再执行下方校验，勿覆盖已有输出 ZIP。
