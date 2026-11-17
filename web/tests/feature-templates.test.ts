@@ -62,6 +62,7 @@ async function mount(appId = "1", count = 1) {
           ref: editor,
           fields: [
             field("app_id", "软件"),
+            field("template_id", "来源模板", { hideControl: true }),
             field("count", "生成数量", { type: "number", default: count }),
             ...policyFields,
             field("maintenance_days", "更新维护天数", {
@@ -123,13 +124,14 @@ it.each([1, 3])("单个或批量%d选模板填入，修改后提交修改值", a
     quota: 9007199254740993n,
   });
   expect(submitted().max_activations).toBe(7);
-  expect(submitted()).not.toHaveProperty("template_id");
+  expect(submitted().template_id).toBe(10);
 });
 it("切换软件清掉模板选择，无模板时隐藏下拉", async () => {
   await mount();
   await choose();
   editor.value!.values.app_id = "2";
   await flush();
+  expect(editor.value!.values.template_id).toBe("");
   expect(root.textContent).not.toContain("功能模板（可选）");
   expect(root.textContent).not.toContain("已填入模板内容");
   editor.value!.values.app_id = "1";
@@ -170,13 +172,36 @@ it("打开试用模板下拉时读取最新模板，无需刷新页面", async (
   setAdmin("admin", "refresh");
   let items: Row[] = [];
   http.defaults.adapter = async (config) => ({
-    config, data: { code: "OK", data: { items, total: items.length } },
-    status: 200, statusText: "OK", headers: new AxiosHeaders(),
+    config,
+    data: { code: "OK", data: { items, total: items.length } },
+    status: 200,
+    statusText: "OK",
+    headers: new AxiosHeaders(),
   });
-  root = document.createElement("div"); document.body.append(root);
-  app = createApp(TemplateSelect, { appId: "1", modelValue: "", label: "试用功能模板" }).use(ElementPlus);
-  app.mount(root); await flush();
+  root = document.createElement("div");
+  document.body.append(root);
+  app = createApp(TemplateSelect, {
+    appId: "1",
+    modelValue: "",
+    label: "试用功能模板",
+  }).use(ElementPlus);
+  app.mount(root);
+  await flush();
   items = [template];
-  root.querySelector<HTMLElement>(".el-select__wrapper")!.click(); await flush();
-  expect(Array.from(document.querySelectorAll(".el-select-dropdown__item")).some(v => v.textContent?.includes("专业版"))).toBe(true);
+  root.querySelector<HTMLElement>(".el-select__wrapper")!.click();
+  await flush();
+  expect(
+    Array.from(document.querySelectorAll(".el-select-dropdown__item")).some(
+      (v) => v.textContent?.includes("专业版"),
+    ),
+  ).toBe(true);
+});
+
+it("试用授权不提交模板来源，空选择不提交来源", () => {
+  expect(
+    licenseRequest({ app_id: 1, type: "trial", template_id: "10" }).data,
+  ).not.toHaveProperty("template_id");
+  expect(
+    licenseRequest({ app_id: 1, template_id: "" }).data,
+  ).not.toHaveProperty("template_id");
 });

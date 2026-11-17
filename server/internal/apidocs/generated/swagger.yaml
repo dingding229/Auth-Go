@@ -352,6 +352,13 @@ components:
         ts:
           type: integer
       type: object
+    apidocs.LicenseInfoResponse:
+      properties:
+        code:
+          type: string
+        data:
+          $ref: '#/components/schemas/licensing.LicenseInfo'
+      type: object
     apidocs.LicenseList:
       properties:
         items:
@@ -724,6 +731,20 @@ components:
           $ref: '#/components/schemas/automation.SystemSettings'
         message:
           type: string
+      type: object
+    apidocs.TemplateCountsResponse:
+      properties:
+        code:
+          type: string
+        data:
+          $ref: '#/components/schemas/template.Counts'
+      type: object
+    apidocs.TemplateSyncResponse:
+      properties:
+        code:
+          type: string
+        data:
+          $ref: '#/components/schemas/template.SyncResult'
       type: object
     apidocs.TrialSettingsResponse:
       properties:
@@ -1292,6 +1313,8 @@ components:
       properties:
         app_id:
           type: integer
+        build_verified:
+          type: boolean
         built_at:
           type: string
         changelog:
@@ -1527,6 +1550,8 @@ components:
           type: string
         starts_at:
           type: string
+        template_id:
+          type: integer
         type:
           type: string
         user_id:
@@ -1572,6 +1597,8 @@ components:
           type: string
         starts_at:
           type: string
+        template_id:
+          type: integer
         type:
           type: string
         user_id:
@@ -1639,6 +1666,10 @@ components:
           type: string
         suspected_sharing:
           type: boolean
+        template_id:
+          type: integer
+        template_name:
+          type: string
         type:
           type: string
         updated_at:
@@ -1703,6 +1734,10 @@ components:
           type: string
         suspected_sharing:
           type: boolean
+        template_id:
+          type: integer
+        template_name:
+          type: string
         type:
           type: string
         updated_at:
@@ -1736,6 +1771,11 @@ components:
             removes it.
           format: date-time
           type: string
+      type: object
+    licensing.TemplateInput:
+      properties:
+        template_id:
+          type: integer
       type: object
     maintenance.Input:
       properties:
@@ -2216,6 +2256,13 @@ components:
         updated_at:
           type: string
       type: object
+    template.Counts:
+      properties:
+        all:
+          type: integer
+        linked:
+          type: integer
+      type: object
     template.Info:
       properties:
         app_id:
@@ -2249,6 +2296,19 @@ components:
           type: object
         name:
           type: string
+      type: object
+    template.SyncInput:
+      properties:
+        scope:
+          enum:
+          - linked
+          - all
+          type: string
+      type: object
+    template.SyncResult:
+      properties:
+        count:
+          type: integer
       type: object
     trial.ConvertInput:
       properties:
@@ -2297,7 +2357,9 @@ externalDocs:
   description: ""
   url: ""
 info:
-  description: disabled独立于withdrawn；禁用后已上报该版本的授权校验返回VERSION_DISABLED及latest_version，旧版本仍可检查更新。
+  description: |-
+    disabled独立于withdrawn；禁用后已上报该版本的授权校验返回VERSION_DISABLED及latest_version，旧版本仍可检查更新。
+    build_verified 为 true 时忽略 encrypted 和 built_at 的修改；其他字段照常更新。
   title: Auth Go API
   version: 1.0.0
 openapi: 3.1.0
@@ -4481,7 +4543,7 @@ paths:
           description: Too Many Requests
       security:
       - AdminBearer: []
-      summary: 删除未被试用设置引用的功能模板
+      summary: 删除功能模板（清空授权来源关联，保留功能项）
       tags:
       - 功能模板
     patch:
@@ -4552,7 +4614,145 @@ paths:
           description: Too Many Requests
       security:
       - AdminBearer: []
-      summary: 修改功能模板（不影响已发放授权）
+      summary: 修改功能模板（不自动同步已发放授权）
+      tags:
+      - 功能模板
+  /api/v1/admin/applications/{id}/templates/{template_id}/counts:
+    get:
+      description: linked 为关联此模板的正式授权数，all 为此软件的全部正式授权数；均排除试用。
+      parameters:
+      - description: 软件编号
+        in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+      - description: 模板编号
+        in: path
+        name: template_id
+        required: true
+        schema:
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.TemplateCountsResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+      security:
+      - AdminBearer: []
+      summary: 获取模板可同步授权数量
+      tags:
+      - 功能模板
+  /api/v1/admin/applications/{id}/templates/{template_id}/sync:
+    post:
+      description: linked 仅同步关联授权，all 同步此软件正式授权，排除试用；功能项整体替换并记录模板来源，不改实例数、有效期、维护期。功能项已相同的授权不计入数量；all
+        范围仍会为它们记录模板来源。修改模板本身不触发同步。
+      parameters:
+      - description: 软件编号
+        in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+      - description: 模板编号
+        in: path
+        name: template_id
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/template.SyncInput'
+              description: 同步范围 linked 或 all
+              summary: body
+        description: 同步范围 linked 或 all
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.TemplateSyncResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+      security:
+      - AdminBearer: []
+      summary: 显式同步模板功能项到授权
       tags:
       - 功能模板
   /api/v1/admin/applications/{id}/trial:
@@ -5743,6 +5943,7 @@ paths:
       tags:
       - 授权
     post:
+      description: template_id 可选且须属于同一软件，只记录来源；功能项以请求 features 为准，试用授权不记录来源。
       parameters:
       - description: app_id；规则见接口契约
         in: query
@@ -6628,6 +6829,73 @@ paths:
       security:
       - AdminBearer: []
       summary: 授权 POST /licenses/:id/suspend
+      tags:
+      - 授权
+  /api/v1/admin/licenses/{id}/template:
+    post:
+      description: 模板须属于授权的软件；整体替换功能项并记录来源，不改实例数、有效期和维护期；试用授权拒绝。下次在线验证或心跳生效，离线签名缓存保持原功能项。
+      parameters:
+      - description: 授权编号
+        in: path
+        name: id
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/licensing.TemplateInput'
+              description: 功能模板编号
+              summary: body
+        description: 功能模板编号
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.LicenseInfoResponse'
+          description: OK
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/apidocs.Envelope'
+          description: Bad Request
+      security:
+      - AdminBearer: []
+      summary: 为正式授权套用功能模板
       tags:
       - 授权
   /api/v1/admin/licenses/{id}/trial:
@@ -8991,7 +9259,9 @@ paths:
       tags:
       - 版本
     patch:
-      description: disabled独立于withdrawn；禁用后已上报该版本的授权校验返回VERSION_DISABLED及latest_version，旧版本仍可检查更新。
+      description: |-
+        disabled独立于withdrawn；禁用后已上报该版本的授权校验返回VERSION_DISABLED及latest_version，旧版本仍可检查更新。
+        build_verified 为 true 时忽略 encrypted 和 built_at 的修改；其他字段照常更新。
       parameters:
       - description: id
         in: path

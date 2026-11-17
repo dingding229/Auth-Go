@@ -96,6 +96,19 @@ func Audit(database *gorm.DB, log *slog.Logger, auditedReads ...string) gin.Hand
 					entry.Details["encrypted"] = value
 				}
 			}
+			if scope, ok := c.Get("audit_template_scope"); ok && (scope == "linked" || scope == "all") {
+				entry.Details["scope"] = scope
+			}
+			if count, ok := c.Get("audit_template_count"); ok {
+				if n, valid := count.(int64); valid {
+					entry.Details["count"] = n
+				}
+			}
+			if id, ok := c.Get("audit_template_id"); ok {
+				if n, valid := id.(uint64); valid {
+					entry.Details["template_id"] = n
+				}
+			}
 			entry.StatusCode = status
 			entry.Summary = fmt.Sprintf("%s %s → %d (%s)", c.Request.Method, route, status, code)
 			// A panic has not yet reached the outer recovery middleware. Keep the

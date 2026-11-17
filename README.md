@@ -115,7 +115,7 @@ func main() {
 authgo-pack 已内置在 `docker.io/dingding229/authgo` 镜像中，代码加密构建会自动使用，无需配置。离线追查可从主镜像运行工具（将占位值替换为软件标记与实际文件名）：
 
 ```sh
-docker run --rm --entrypoint /authgo-pack -v "$PWD:/work:ro" docker.io/dingding229/authgo:1.0.2 trace --tag "<tag>" "/work/<文件>"
+docker run --rm --entrypoint /authgo-pack -v "$PWD:/work:ro" docker.io/dingding229/authgo:1.0.3 trace --tag "<tag>" "/work/<文件>"
 ```
 
 ### 7. 用户中心
@@ -139,13 +139,13 @@ docker run --rm --entrypoint /authgo-pack -v "$PWD:/work:ro" docker.io/dingding2
 
 ### 升级
 
-更新前先备份。在原安装目录执行：
+更新前先下载完整备份。在原安装目录执行：
 
 ```sh
 docker compose pull && docker compose up -d
 ```
 
-默认镜像使用 `latest`。需要固定版本时，把 Compose 文件中的 `docker.io/dingding229/authgo:latest` 改为 `docker.io/dingding229/authgo:1.0.2`，再执行上面的升级命令。当前版本沿用初始数据库结构，不支持跨数据库结构升级。
+默认镜像使用 `latest`。需要固定版本时，把 Compose 文件中的 `docker.io/dingding229/authgo:latest` 改为 `docker.io/dingding229/authgo:1.0.3`，再执行上面的升级命令。1.0.3 启动时会在同一事务中自动升级 1.0.0–1.0.2 的数据库并保留数据，完成后共 3 条迁移记录；未知迁移记录会被拒绝。旧版本程序不能直接读取升级后的数据库，回滚必须同时恢复升级前的备份和原镜像。
 
 ### 备份与恢复
 
@@ -155,7 +155,7 @@ docker compose pull && docker compose up -d
 
 #### 离线恢复
 
-恢复是**停机替换**，接受完整 ZIP 和密码加密的 ZIP 包，使用与备份数据库结构匹配的镜像。先停止所有写入 `data` 目录的服务或工具；不要直接覆盖运行中的 SQLite 数据库，不要把旧 WAL/SHM 混入备份快照。
+恢复是**停机替换**，接受完整 ZIP 和密码加密的 ZIP 包，1.0.3 可接受 1.0.0–1.0.2 的基线备份及包含已知后续迁移的备份，恢复后启动时自动补齐迁移。未知结构或高于当前程序的迁移版本会被拒绝。先停止所有写入 `data` 目录的服务或工具；不要直接覆盖运行中的 SQLite 数据库，不要把旧 WAL/SHM 混入备份快照。
 
 加密包先解封为 ZIP，再执行下方原有的离线校验及替换步骤；旧的未加密 ZIP 不需要密码，也仍可按原步骤恢复。解封不会修改数据库，错误密码、篡改或截断均失败且不发布输出文件。密码只能由 `AUTHGO_BACKUP_PASSWORD` 或管道标准输入提供，不使用命令行密码参数：
 
@@ -164,7 +164,7 @@ mkdir -p .restore && chmod 700 .restore
 # 将加密备份放入 .restore/backup.zip.enc；在可信终端读取密码，不回显
 read -rs AUTHGO_BACKUP_PASSWORD; export AUTHGO_BACKUP_PASSWORD; printf '\n'
 docker run --rm --memory=256m --user "$(id -u):$(id -g)" --workdir /work -e AUTHGO_BACKUP_PASSWORD -v "$PWD/.restore:/work" \
-  --entrypoint /authgo docker.io/dingding229/authgo:1.0.2 \
+  --entrypoint /authgo docker.io/dingding229/authgo:1.0.3 \
   backup-unlock /work/backup.zip.enc /work/backup.zip
 unset AUTHGO_BACKUP_PASSWORD
 # 解封失败立即停止；成功后再执行下方校验，勿覆盖已有输出 ZIP。
@@ -216,7 +216,9 @@ if env.get('AUTHGO_MASTER_KEY'):
 # 若之后改动容器环境配置，启动前必须重新确认实际密钥；ENV优先于文件
 with sqlite3.connect('file:/work/staged/authgo.db?mode=ro', uri=True) as db:
     assert db.execute('PRAGMA integrity_check').fetchone()[0] == 'ok'
-    assert db.execute('SELECT version,name FROM schema_migrations').fetchall() == [(1, 'authgo_1_0_0')], '本版本不支持从旧版本升级'
+    known = [(1, 'authgo_1_0_0'), (2, 'authgo_1_0_3_build_verified'), (3, 'authgo_1_0_3_license_template')]
+    applied = db.execute('SELECT version,name FROM schema_migrations ORDER BY version').fetchall()
+    assert applied and applied == known[:len(applied)], '数据库结构不受支持：迁移版本或名称不匹配'
 print('备份格式、数据库、主密钥和环境配置校验完成（不输出密钥）')
 PYRESTORE
 # 快照已是完整DB，绝不把原库或其他备份的WAL/SHM混入新快照
@@ -237,7 +239,7 @@ curl --fail --silent http://127.0.0.1:8080/healthz
 
 </details>
 
-恢复前的容器环境信息和停机现场都含敏感数据，`.restore` 仅限管理员访问。命令会校验 ZIP 成员、完整性、密钥长度、SQLite 完整性及初始结构；当前容器若配置了 `AUTHGO_MASTER_KEY`，必须与备份相同。**启动前若更改 Compose 的容器环境配置，须再次确认最终生效的密钥匹配**，环境值优先于密钥文件。
+恢复前的容器环境信息和停机现场都含敏感数据，`.restore` 仅限管理员访问。命令会校验 ZIP 成员、完整性、密钥长度、SQLite 完整性及有序的已知迁移记录；当前容器若配置了 `AUTHGO_MASTER_KEY`，必须与备份相同。**启动前若更改 Compose 的容器环境配置，须再次确认最终生效的密钥匹配**，环境值优先于密钥文件。
 
 恢复后 `/data` 属主应为 `65532:65532`、权限 `0700`，数据库与主密钥为 `0600`；不要改成 `0777/0644` 或以 root 启动服务。确认容器健康、使用快照时的管理员账号登录，核对软件、用户、授权、版本及接入配置可读取，再用 SDK 校验原授权，并创建一次完整备份。IP 库需要单独恢复或重新启用/上传。
 
@@ -361,7 +363,7 @@ services:
 - 接入配置可以公开，但必须由开发者编译固定；不要由客户环境变量、配置文件或未经认证的响应替换信任根，也不要把授权码或配置串写入日志。
 - 客户控制运行主机，无法承诺绝对防破解；关键入口应持续执行授权守卫。代码加密和水印提高还原或追查成本，但不能阻止宿主机 root 调试和内存导出。
 - 宽限只适用于已有可信票据；到期或收到已认证明确拒绝后不得继续受保护业务。常驻进程停止，PHP-FPM/Apache 按请求式 SDK 拒绝响应。
-- 主密钥与数据库必须成对保存；不支持跨数据库结构恢复；原有未加密完整 ZIP 备份仍可恢复。
+- 主密钥与数据库必须成对保存；可恢复受支持旧版本的备份并在启动时升级，未知迁移结构会被拒绝；原有未加密完整 ZIP 备份仍可恢复。
 
 ## 协议概要
 

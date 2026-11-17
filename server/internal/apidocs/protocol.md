@@ -317,7 +317,7 @@ memfd 标志 0x13（MFD_CLOEXEC|MFD_ALLOW_SEALING|MFD_EXEC），旧内核 EINVAL
 桩/程序共享实例身份但 session 不同，业务 StartGuard 新 session 接管同一席位，负责心跳和 SIGTERM 释放。PID 不变，exe=memfd:authgo-main (deleted) 或 unlink tmpfs，cmdline 保留；自定位/重执行需适配，动态解释器/库由镜像提供。Linux 受保护 Go/Rust Guard 调用 prctl(PR_SET_DUMPABLE,0)，失败仅记录，桩解密前也尽力禁转储，不防 root 读内存/proc。
 
 ### 8.11 构建展示元数据
-管理版本创建/更新接受 encrypted 和可空 RFC3339 built_at；加密必填、关闭清空，自动同步保留，列表批量读。它们仅展示，维护期仅看认证信封版本/built_at，不可通过列表时间改变解锁。打包工具说明见[Docker 接入](?tab=docker#4-代码加密可选)。
+已有版本在 payload.unlock 成功时自动登记 encrypted=true、build_verified=true 和认证的 built_at，多架构保留最早时间；无记录时不创建。未确认时可手动登记（加密必填、关闭清空），确认后更新接口忽略这两项修改；自动同步保留，列表批量读。它们仅展示，维护期仅看认证信封版本/built_at，不可通过列表时间改变解锁。打包工具说明见[Docker 接入](?tab=docker#4-代码加密可选)。
 
 ## 9. 水印
 ### 9.1 派生与接口

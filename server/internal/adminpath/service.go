@@ -61,7 +61,7 @@ func (s *Service) Current(ctx context.Context) (string, error) {
 	var row model.Setting
 	if err := s.db.WithContext(ctx).First(&row, "key = ?", SettingKey).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", fmt.Errorf("后台地址配置缺失：数据库必须使用当前1.0.0初始结构")
+			return "", fmt.Errorf("后台地址配置缺失：请检查数据库完整性或恢复完整备份")
 		}
 		return "", err
 	}

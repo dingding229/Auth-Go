@@ -93,6 +93,7 @@ watch(
   { immediate: true },
 );
 const fields = computed(() => [
+  field("template_id", "来源模板", { hideControl: true }),
   ...licenseFields.map((f) =>
     f.key === "app_id" ? { ...f, hideControl: singleSoftware.value } : f,
   ),

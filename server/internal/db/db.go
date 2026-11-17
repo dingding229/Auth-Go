@@ -1,4 +1,4 @@
-// Package db opens the pure-Go SQLite database and creates its initial schema.
+// Package db opens the pure-Go SQLite database and applies ordered schema migrations.
 package db
 
 import (
@@ -62,7 +62,15 @@ var initialSchema string
 
 const BaselineName = "authgo_1_0_0"
 
-// CheckSchema accepts only an empty database or this product's exact baseline.
+// schema.sql contains the latest schema; new databases record all migrations
+// without replaying ALTER statements already reflected in that snapshot.
+var migrations = []struct{ name, sql string }{
+	{BaselineName, initialSchema},
+	{"authgo_1_0_3_build_verified", "ALTER TABLE app_versions ADD COLUMN build_verified integer NOT NULL DEFAULT 0 CHECK(build_verified IN (0,1))"},
+	{"authgo_1_0_3_license_template", "ALTER TABLE licenses ADD COLUMN template_id integer REFERENCES feature_templates(id) ON DELETE SET NULL; CREATE INDEX idx_licenses_template_id ON licenses(template_id)"},
+}
+
+// CheckSchema accepts an empty database or an ordered prefix of known migrations.
 // It performs no writes, including on unsupported or damaged databases.
 func CheckSchema(database *gorm.DB) error {
 	var tables int64
@@ -72,32 +80,51 @@ func CheckSchema(database *gorm.DB) error {
 	if tables == 0 {
 		return nil
 	}
-	unsupported := fmt.Errorf("本版本不支持从旧版本升级：数据库必须使用 Auth Go 1.0.0 初始结构")
+	unsupported := fmt.Errorf("数据库结构不受支持：必须包含 Auth Go 1.0.0 基线及按顺序匹配的已知迁移")
 	if !database.Migrator().HasTable("schema_migrations") {
 		return unsupported
 	}
 	var versions []model.SchemaMigration
-	if err := database.Find(&versions).Error; err != nil {
+	if err := database.Order("version ASC").Find(&versions).Error; err != nil {
 		return unsupported
 	}
-	if len(versions) != 1 || versions[0].Version != 1 || versions[0].Name != BaselineName {
+	if len(versions) == 0 || len(versions) > len(migrations) {
 		return unsupported
+	}
+	for i, v := range versions {
+		if v.Version != i+1 || v.Name != migrations[i].name {
+			return unsupported
+		}
 	}
 	return nil
 }
 
-// Migrate creates the single baseline atomically; existing schemas are never converted.
+// Migrate creates the current schema or applies missing migrations atomically.
 func Migrate(database *gorm.DB) error {
 	return database.Transaction(func(tx *gorm.DB) error {
 		if err := CheckSchema(tx); err != nil {
 			return err
 		}
-		if tx.Migrator().HasTable("schema_migrations") {
-			return nil
+		fresh := !tx.Migrator().HasTable("schema_migrations")
+		var applied int64
+		if fresh {
+			if err := tx.Exec(migrations[0].sql).Error; err != nil {
+				return fmt.Errorf("创建初始数据库: %w", err)
+			}
+		} else if err := tx.Model(&model.SchemaMigration{}).Count(&applied).Error; err != nil {
+			return err
 		}
-		if err := tx.Exec(initialSchema).Error; err != nil {
-			return fmt.Errorf("创建初始数据库: %w", err)
+		for i := int(applied); i < len(migrations); i++ {
+			migration := migrations[i]
+			if !fresh {
+				if err := tx.Exec(migration.sql).Error; err != nil {
+					return fmt.Errorf("执行数据库迁移 %d: %w", i+1, err)
+				}
+			}
+			if err := tx.Create(&model.SchemaMigration{Version: i + 1, Name: migration.name, AppliedAt: time.Now().UTC()}).Error; err != nil {
+				return err
+			}
 		}
-		return tx.Create(&model.SchemaMigration{Version: 1, Name: BaselineName, AppliedAt: time.Now().UTC()}).Error
+		return nil
 	})
 }

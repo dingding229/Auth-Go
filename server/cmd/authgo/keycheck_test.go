@@ -4,17 +4,30 @@ import (
 	"authgo/internal/catalog"
 	"authgo/internal/db"
 	"authgo/internal/keycheck"
+	"authgo/internal/model"
 	"bytes"
 	"encoding/base64"
 	"errors"
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 )
 
 func TestWrongMasterKeyStopsBeforeWriteOrListen(t *testing.T) {
+	for _, legacy := range []bool{false, true} {
+		name := "current"
+		if legacy {
+			name = "baseline"
+		}
+		t.Run(name, func(t *testing.T) { wrongMasterKeyStopsBeforeWriteOrListen(t, legacy) })
+	}
+}
+
+func wrongMasterKeyStopsBeforeWriteOrListen(t *testing.T, legacy bool) {
+	t.Helper()
 	dir := t.TempDir()
 	master := bytes.Repeat([]byte{3}, 32)
 	d, e := db.Open(dir, time.Second)
@@ -23,6 +36,28 @@ func TestWrongMasterKeyStopsBeforeWriteOrListen(t *testing.T) {
 	}
 	if e = db.Migrate(d); e != nil {
 		t.Fatal(e)
+	}
+	if legacy {
+		if e = d.Exec("DROP INDEX idx_licenses_template_id; ALTER TABLE licenses DROP COLUMN template_id").Error; e != nil {
+			t.Fatal(e)
+		}
+		if e = d.Exec("ALTER TABLE app_versions DROP COLUMN build_verified").Error; e != nil {
+			t.Fatal(e)
+		}
+		if e = d.Exec("DELETE FROM schema_migrations WHERE version>1").Error; e != nil {
+			t.Fatal(e)
+		}
+	}
+	var before []model.SchemaMigration
+	if e = d.Order("version ASC").Find(&before).Error; e != nil {
+		t.Fatal(e)
+	}
+	want := 3
+	if legacy {
+		want = 1
+	}
+	if len(before) != want {
+		t.Fatal("unexpected initial migration history", before)
 	}
 	// Production gateway service creates actual persisted ciphertext.
 	if _, e = catalog.NewService(d, master); e != nil {
@@ -65,9 +100,11 @@ func TestWrongMasterKeyStopsBeforeWriteOrListen(t *testing.T) {
 	}
 	pool, _ = d.DB()
 	defer pool.Close()
-	var n int64
-	d.Table("schema_migrations").Where("version=1").Count(&n)
-	if n != 1 {
-		t.Fatal("baseline changed during validation")
+	var after []model.SchemaMigration
+	if e = d.Order("version ASC").Find(&after).Error; e != nil {
+		t.Fatal(e)
+	}
+	if !reflect.DeepEqual(before, after) || d.Migrator().HasColumn(&model.AppVersion{}, "build_verified") == legacy || d.Migrator().HasColumn(&model.License{}, "template_id") == legacy {
+		t.Fatal("database migrated during failed key validation", before, after)
 	}
 }

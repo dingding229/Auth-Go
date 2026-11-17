@@ -58,10 +58,10 @@ it.each(dockerLanguages)(
     );
     const pinned = protectedTemplate(language, "cli", {
       ...build,
-      packImageTag: "1.0.2",
+      packImageTag: "1.0.3",
     });
     expect(pinned.files.Dockerfile).toContain(
-      "ARG AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:1.0.2",
+      "ARG AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:1.0.3",
     );
     expect(
       customerCompose(language, "cli", "example-org/example-app", build),
@@ -93,7 +93,7 @@ it("手动复制与服务端自动同步使用同一份加密 FPM 工作流契�
     keyId: "key_test",
     publicKey: "a".repeat(43),
     appKey: "app_test",
-    packImageTag: "1.0.2",
+    packImageTag: "1.0.3",
   });
   expect(workflow).toBe(
     readFileSync(
@@ -104,14 +104,14 @@ it("手动复制与服务端自动同步使用同一份加密 FPM 工作流契�
 });
 
 it("正式模板和工作流固定服务端版本，开发构建使用 latest 并加注释", () => {
-  const release = { ...build, packImageTag: "1.0.2" };
+  const release = { ...build, packImageTag: "1.0.3" };
   const file = protectedTemplate("Go", "cli", release).files.Dockerfile!;
   expect(file).toContain(
-    "ARG AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:1.0.2",
+    "ARG AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:1.0.3",
   );
   expect(file).toContain("FROM ${AUTHGO_PACK_IMAGE} AS tools");
   expect(githubActions("Go", "cli", "example/app", release)).toContain(
-    "AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:1.0.2",
+    "AUTHGO_PACK_IMAGE=docker.io/dingding229/authgo:1.0.3",
   );
   const development = protectedTemplate("Go", "cli", build).files.Dockerfile!;
   expect(development).toMatch(/^# syntax=/);

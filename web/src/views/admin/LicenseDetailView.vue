@@ -12,7 +12,7 @@ import SectionPanel from "../../components/SectionPanel.vue";
 import { computed, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { get, post, patch } from "../../lib/http";
-import { dateText, idText, text, type Row } from "../../lib/json";
+import { dateText, idText, text, parseJSON, type Row } from "../../lib/json";
 import { activationQuota, effectiveDays } from "../../lib/presentation";
 import { maintenanceText, renewalMaintenance } from "../../lib/maintenance";
 import { label } from "../../lib/labels";
@@ -21,6 +21,7 @@ import { useAdminDetail } from "../../composables/admin-detail";
 import { useCollection } from "../../composables/collection";
 import { logColumns, field } from "../../lib/schema";
 import SchemaEditor from "../../components/SchemaEditor.vue";
+import TemplateSelect from "../../components/TemplateSelect.vue";
 
 import ActionMenu from "../../components/ActionMenu";
 import PageHeading from "../../components/PageHeading.vue";
@@ -34,6 +35,9 @@ const route = useRoute(),
   id = computed(() => String(route.params.id));
 const logs = useCollection("/verify-logs", () => ({ license_id: id.value }));
 const activations = ref<{ load: () => Promise<void> }>();
+const templateOpen = ref(false),
+  templateId = ref(""),
+  selectedTemplate = ref<Row>();
 const maintenanceOpen = ref(false),
   maintenanceDays = ref(0);
 async function saveMaintenance() {
@@ -60,6 +64,9 @@ const renewal = reactive({
   passwordOpen = ref(false),
   assignmentOpen = ref(false);
 const detail = useAdminDetail("/licenses", id, value, () => {
+  templateOpen.value = false;
+  templateId.value = "";
+  selectedTemplate.value = undefined;
   renewOpen.value = false;
   maintenanceOpen.value = false;
   passwordOpen.value = false;
@@ -70,9 +77,42 @@ const detail = useAdminDetail("/licenses", id, value, () => {
   task.error.value = "";
 });
 const load = detail.load;
-watch([renewOpen, maintenanceOpen, passwordOpen, assignmentOpen], () => {
-  task.error.value = "";
+watch(
+  [renewOpen, maintenanceOpen, passwordOpen, assignmentOpen, templateOpen],
+  () => {
+    task.error.value = "";
+  },
+);
+
+watch(templateId, (id) => {
+  if (idText(selectedTemplate.value?.id) !== id)
+    selectedTemplate.value = undefined;
 });
+function openTemplate() {
+  templateId.value = "";
+  selectedTemplate.value = undefined;
+  templateOpen.value = true;
+  task.error.value = "";
+}
+async function applyTemplate() {
+  const source = selectedTemplate.value;
+  if (!source || !templateId.value) return;
+  await task.run(async () => {
+    const selected = detail.capture();
+    await confirmAction(
+      `将用模板 ${String(source.name)} 的功能项替换此授权当前的功能项`,
+      "套用功能模板",
+      { action: "套用功能模板", danger: true },
+    );
+    selected.check();
+    if (!templateOpen.value) return;
+    await post(`/licenses/${selected.id}/template`, {
+      template_id: parseJSON(idText(source.id)),
+    });
+    selected.commit(await get(`/licenses/${selected.id}`));
+    if (selected.current()) templateOpen.value = false;
+  }, "功能模板已套用");
+}
 
 async function state(action: string) {
   await task.run(async () => {
@@ -205,6 +245,13 @@ async function saveAssignment(body: Row) {
       <el-button :loading="task.busy.value" @click="load">
         刷新
       </el-button>
+      <el-button
+        v-if="value && value.type !== 'trial'"
+        :disabled="!detail.ready.value || task.busy.value"
+        @click="openTemplate"
+      >
+        套用功能模板
+      </el-button>
       <template v-if="value && value.status !== 'revoked'">
         <el-button
           :disabled="!detail.ready.value || task.busy.value"
@@ -266,7 +313,13 @@ async function saveAssignment(body: Row) {
   />
   <request-notice :error="detail.error.value" @retry="load()" />
   <request-notice
-    v-if="!renewOpen && !maintenanceOpen && !passwordOpen && !assignmentOpen"
+    v-if="
+      !renewOpen &&
+        !maintenanceOpen &&
+        !passwordOpen &&
+        !assignmentOpen &&
+        !templateOpen
+    "
     :error="task.error.value"
   />
   <template v-if="value">
@@ -329,6 +382,9 @@ async function saveAssignment(body: Row) {
               {{ text(value.note) }}
             </key-value-item>
           </key-value-list>
+          <p v-if="value.template_name" class="field-hint">
+            来源模板：{{ value.template_name }}
+          </p>
           <json-block :value="value.features" title="授权功能项" />
           <json-block :value="value.metadata" title="扩展数据" />
         </section-panel>
@@ -380,6 +436,38 @@ async function saveAssignment(body: Row) {
       </el-tab-pane>
     </el-tabs>
   </template>
+  <focus-overlay
+    v-model="templateOpen"
+    title="套用功能模板"
+    width="480px"
+    :close-on-click-modal="false"
+  >
+    <el-form label-position="top" @submit.prevent="applyTemplate">
+      <request-notice :error="task.error.value" />
+      <template-select
+        v-model="templateId"
+        :app-id="idText(value?.app_id)"
+        label="功能模板"
+        @selected="selectedTemplate = $event"
+      />
+      <p class="field-hint">
+        整体替换功能项，不改变实例数、有效期和维护期。
+      </p>
+      <div class="action-toolbar">
+        <el-button @click="templateOpen = false">
+          取消
+        </el-button>
+        <el-button
+          type="primary"
+          native-type="submit"
+          :disabled="!selectedTemplate"
+          :loading="task.busy.value"
+        >
+          套用功能模板
+        </el-button>
+      </div>
+    </el-form>
+  </focus-overlay>
   <focus-overlay
     v-model="assignmentOpen"
     drawer
@@ -477,7 +565,9 @@ async function saveAssignment(body: Row) {
   >
     <el-form label-position="top" @submit.prevent="saveMaintenance">
       <request-notice :error="task.error.value" />
-      <p>当前维护期：{{ maintenanceText(value?.maintenance_until) }}</p>
+      <p>
+        当前维护期：{{ maintenanceText(value?.maintenance_until) }}
+      </p>
       <el-form-item label="维护天数（从现在计算）">
         <number-input
           v-model="maintenanceDays"

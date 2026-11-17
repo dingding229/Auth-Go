@@ -49,8 +49,20 @@ type EndUser struct {
 	AuthVersion        uint64 `gorm:"not null;default:0" json:"-"`
 }
 
+type FeatureTemplate struct {
+	Base
+	AppID                  uint64
+	Name                   string
+	Features               JSONMap `gorm:"type:text"`
+	DefaultMaxActivations  *int
+	DefaultDays            *int
+	DefaultMaintenanceDays *int
+}
+
 type License struct {
-	Source           string `gorm:"not null;default:''"`
+	TemplateID       *uint64          `gorm:"index"`
+	Template         *FeatureTemplate `gorm:"foreignKey:TemplateID;constraint:OnDelete:SET NULL"`
+	Source           string           `gorm:"not null;default:''"`
 	ConvertedAt      *time.Time
 	MaintenanceUntil *time.Time
 	Base
@@ -149,6 +161,7 @@ type Announcement struct {
 }
 
 type AppVersion struct {
+	BuildVerified     bool `gorm:"not null;default:false"`
 	Encrypted         bool `gorm:"not null;default:false"`
 	BuiltAt           *time.Time
 	Disabled          bool   `gorm:"not null;default:false"`
@@ -164,7 +177,7 @@ type AppVersion struct {
 	PublishedAt *time.Time
 }
 
-// SchemaMigration identifies the supported database baseline.
+// SchemaMigration records one applied database schema migration.
 type SchemaMigration struct {
 	Version   int       `gorm:"primaryKey;autoIncrement:false"`
 	Name      string    `gorm:"not null"`

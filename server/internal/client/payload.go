@@ -6,6 +6,7 @@ import (
 	"authgo/internal/model"
 	"authgo/internal/payloadkey"
 	"authgo/internal/verify"
+	"errors"
 	"gorm.io/gorm"
 	"time"
 )
@@ -66,5 +67,34 @@ func (s *Service) unlockPayload(tx *gorm.DB, a model.Application, l model.Licens
 	if e != nil {
 		return denied(code.PayloadInvalid)
 	}
+	if err := confirmPayloadBuild(tx, a.ID, p.Version, built); err != nil {
+		// Metadata is best-effort; never log the envelope or database error values.
+		s.log.Warn("登记加密构建元数据失败", "app_id", a.ID)
+	}
 	return outcome{Code: code.OK, Data: map[string]any{"e": wrapped.E, "n": wrapped.N, "c": wrapped.C, "watermark": watermark, "version": p.Version, "latest_entitled_version": maintenance.Latest(a, l, versions, now)}}
+}
+
+// Only update existing releases: a payload-only source would be excluded from
+// update notifications even after Docker Hub fills its publication time.
+func confirmPayloadBuild(tx *gorm.DB, appID uint64, version string, built time.Time) error {
+	var row model.AppVersion
+	if err := tx.Select("id", "encrypted", "build_verified", "built_at").Where("app_id=? AND version=?", appID, version).First(&row).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil
+		}
+		return err
+	}
+	if row.Encrypted && row.BuildVerified && row.BuiltAt != nil && !built.Before(*row.BuiltAt) {
+		return nil
+	}
+	// A savepoint isolates failed metadata writes from the successful unlock.
+	return tx.Transaction(func(tx *gorm.DB) error {
+		return tx.Model(&model.AppVersion{}).
+			Where("id=? AND (encrypted=0 OR build_verified=0 OR built_at IS NULL OR built_at>?)", row.ID, built).
+			Updates(map[string]any{
+				"encrypted":      true,
+				"build_verified": true,
+				"built_at":       gorm.Expr("CASE WHEN build_verified=0 OR built_at IS NULL OR built_at>? THEN ? ELSE built_at END", built, built),
+			}).Error
+	})
 }

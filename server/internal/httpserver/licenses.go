@@ -147,6 +147,13 @@ func registerLicensing(r *gin.Engine, s *licensing.Service, identity *auth.Servi
 		created(c, l.ID, err)
 		return l, err
 	}))
+	licenses.POST("/:id/template", middleware.Action("license.template", "license"), withIDBody(func(c *gin.Context, id uint64, in licensing.TemplateInput) (any, error) {
+		out, err := s.ApplyTemplate(c.Request.Context(), id, in)
+		if err == nil {
+			c.Set("audit_template_id", in.TemplateID)
+		}
+		return out, err
+	}))
 	licenses.PATCH("/:id", middleware.Action("license.assign", "license"), withID(func(c *gin.Context, id uint64) (any, error) {
 		var raw map[string]json.RawMessage
 		if err := response.BindJSON(c, &raw); err != nil {

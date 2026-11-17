@@ -251,6 +251,10 @@ func TestNoisyRequestsAreSampled(t *testing.T) {
 }
 func TestLogPersistenceFailureDoesNotDisableRequestsOrRecovery(t *testing.T) {
 	f := newLoggingFixture(t, Options{})
+	var schema []string
+	if err := f.db.Raw("SELECT sql FROM sqlite_master WHERE tbl_name = ? AND type IN ('table', 'index') AND sql IS NOT NULL ORDER BY type DESC", "verify_logs").Scan(&schema).Error; err != nil || len(schema) == 0 {
+		t.Fatalf("read verification log schema: %v", err)
+	}
 	if err := f.db.Migrator().DropTable(&model.VerifyLog{}); err != nil {
 		t.Fatal(err)
 	}
@@ -258,8 +262,10 @@ func TestLogPersistenceFailureDoesNotDisableRequestsOrRecovery(t *testing.T) {
 	awaitDropped(t, f.service, 1)
 	f.signed(t, "verify", token, "", code.OK)
 	awaitDropped(t, f.service, 2)
-	if err := f.db.AutoMigrate(&model.VerifyLog{}); err != nil {
-		t.Fatal(err)
+	for _, statement := range schema {
+		if err := f.db.Exec(statement).Error; err != nil {
+			t.Fatal(err)
+		}
 	}
 	f.signed(t, "heartbeat", token, "", code.OK)
 	f.drain(t)

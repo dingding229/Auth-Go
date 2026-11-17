@@ -64,6 +64,40 @@ func (s *Service) Register(r *gin.Engine, identity *auth.Service) {
 	}
 	root.POST("", middleware.Action("template.create", "feature_template"), save)
 	root.PATCH("/:template_id", middleware.Action("template.update", "feature_template"), save)
+	root.GET("/:template_id/counts", func(c *gin.Context) {
+		a, t, err := ids(c)
+		if err != nil {
+			response.Fail(c, err)
+			return
+		}
+		out, err := s.Counts(c.Request.Context(), a, t)
+		if err != nil {
+			response.Fail(c, err)
+			return
+		}
+		response.Success(c, out)
+	})
+	root.POST("/:template_id/sync", middleware.Action("template.sync", "feature_template"), func(c *gin.Context) {
+		a, t, err := ids(c)
+		if err != nil {
+			response.Fail(c, err)
+			return
+		}
+		var in SyncInput
+		if err = response.BindJSON(c, &in); err != nil {
+			response.Fail(c, err)
+			return
+		}
+		out, err := s.Sync(c.Request.Context(), a, t, in)
+		if err != nil {
+			response.Fail(c, err)
+			return
+		}
+		middleware.ResourceID(c, strconv.FormatUint(t, 10))
+		c.Set("audit_template_scope", in.Scope)
+		c.Set("audit_template_count", out.Count)
+		response.Success(c, out)
+	})
 	root.DELETE("/:template_id", middleware.Action("template.delete", "feature_template"), func(c *gin.Context) {
 		a, t, e := ids(c)
 		if e != nil {

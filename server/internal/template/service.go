@@ -1,4 +1,4 @@
-// Package template manages independent, copy-on-issue feature templates.
+// Package template manages feature templates with explicit synchronization to licenses.
 package template
 
 import (
@@ -15,18 +15,6 @@ import (
 	"unicode/utf8"
 )
 
-type Template struct {
-	model.Base
-	AppID                  uint64
-	Name                   string
-	Features               model.JSONMap `gorm:"type:text"`
-	DefaultMaxActivations  *int
-	DefaultDays            *int
-	DefaultMaintenanceDays *int
-}
-
-func (Template) TableName() string { return "feature_templates" }
-
 type Info struct {
 	ID                     uint64        `json:"id"`
 	AppID                  uint64        `json:"app_id"`
@@ -39,7 +27,7 @@ type Info struct {
 	UpdatedAt              time.Time     `json:"updated_at"`
 }
 
-func info(t Template) Info {
+func info(t model.FeatureTemplate) Info {
 	return Info{t.ID, t.AppID, t.Name, t.Features, t.DefaultMaxActivations, t.DefaultDays, t.DefaultMaintenanceDays, t.CreatedAt, t.UpdatedAt}
 }
 
@@ -61,8 +49,8 @@ func application(tx *gorm.DB, appID uint64) error {
 	}
 	return e
 }
-func Find(tx *gorm.DB, appID, id uint64) (Template, error) {
-	var t Template
+func Find(tx *gorm.DB, appID, id uint64) (model.FeatureTemplate, error) {
+	var t model.FeatureTemplate
 	e := tx.Where("app_id=? AND id=?", appID, id).First(&t).Error
 	if errors.Is(e, gorm.ErrRecordNotFound) {
 		return t, apperror.NotFound()
@@ -84,7 +72,7 @@ func nullableInt(raw json.RawMessage, target **int, min, max int) error {
 	*target = &n
 	return nil
 }
-func apply(t Template, in Input) (Template, error) {
+func apply(t model.FeatureTemplate, in Input) (model.FeatureTemplate, error) {
 	if in.Name != nil {
 		t.Name = strings.TrimSpace(*in.Name)
 	}
@@ -117,8 +105,8 @@ func (s *Service) List(ctx context.Context, appID uint64, p response.Page) ([]In
 		return nil, 0, e
 	}
 	var total int64
-	var items []Template
-	q := tx.Model(&Template{}).Where("app_id=?", appID)
+	var items []model.FeatureTemplate
+	q := tx.Model(&model.FeatureTemplate{}).Where("app_id=?", appID)
 	if e := q.Count(&total).Error; e != nil {
 		return nil, 0, e
 	}
@@ -132,13 +120,13 @@ func (s *Service) List(ctx context.Context, appID uint64, p response.Page) ([]In
 	return out, total, nil
 }
 func (s *Service) Save(ctx context.Context, appID, id uint64, in Input) (Info, error) {
-	var out Template
+	var out model.FeatureTemplate
 	e := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if e := application(tx, appID); e != nil {
 			return e
 		}
 		var e error
-		out = Template{AppID: appID}
+		out = model.FeatureTemplate{AppID: appID}
 		if id != 0 {
 			out, e = Find(tx, appID, id)
 			if e != nil {
@@ -150,7 +138,7 @@ func (s *Service) Save(ctx context.Context, appID, id uint64, in Input) (Info, e
 			return e
 		}
 		var count int64
-		if e = tx.Model(&Template{}).Where("app_id=? AND name=? AND id<>?", appID, out.Name, id).Count(&count).Error; e != nil {
+		if e = tx.Model(&model.FeatureTemplate{}).Where("app_id=? AND name=? AND id<>?", appID, out.Name, id).Count(&count).Error; e != nil {
 			return e
 		}
 		if count > 0 {

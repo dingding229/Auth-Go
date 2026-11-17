@@ -13,6 +13,8 @@ import (
 )
 
 type LicenseInfo struct {
+	TemplateID        *uint64       `json:"template_id"`
+	TemplateName      string        `json:"template_name"`
 	SuspectedSharing  bool          `json:"suspected_sharing,omitempty"`
 	OnlineInstances   int64         `json:"online_instances"`
 	AppName           string        `json:"app_name"`
@@ -60,7 +62,11 @@ func info(l model.License) LicenseInfo {
 	if l.User != nil {
 		userName, userEmail = l.User.Name, l.User.Email
 	}
-	return LicenseInfo{false, 0, l.Application.Name, 0, l.ID, l.CreatedAt, l.UpdatedAt, l.AppID, l.UserID, userName, userEmail, l.Key, l.BatchID, l.Type, l.Status, methods, l.MatchMode, l.MaxActivations, features, l.ValidityRule, l.StartsAt, l.ExpiresAt, l.DurationDays, l.PortalPasswordHash != "", l.Note, metadata, l.MaintenanceUntil, l.Source, l.ConvertedAt}
+	templateName := ""
+	if l.Template != nil {
+		templateName = l.Template.Name
+	}
+	return LicenseInfo{l.TemplateID, templateName, false, 0, l.Application.Name, 0, l.ID, l.CreatedAt, l.UpdatedAt, l.AppID, l.UserID, userName, userEmail, l.Key, l.BatchID, l.Type, l.Status, methods, l.MatchMode, l.MaxActivations, features, l.ValidityRule, l.StartsAt, l.ExpiresAt, l.DurationDays, l.PortalPasswordHash != "", l.Note, metadata, l.MaintenanceUntil, l.Source, l.ConvertedAt}
 }
 func (s *Service) Create(ctx context.Context, in CreateInput) (LicenseInfo, error) {
 	if in.UserID == nil {
@@ -74,7 +80,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (LicenseInfo, erro
 	if err != nil {
 		return LicenseInfo{}, err
 	}
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error { return tx.Omit("User", "Application").Create(&l).Error })
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error { return tx.Omit("User", "Application", "Template").Create(&l).Error })
 	return info(l), writeError(err)
 }
 func writeError(err error) error {
@@ -136,7 +142,9 @@ func (s *Service) Batch(ctx context.Context, in BatchInput) (BatchResult, error)
 		l.BatchID = batch
 		rows = append(rows, l)
 	}
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error { return tx.Omit("User", "Application").CreateInBatches(&rows, 200).Error })
+	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		return tx.Omit("User", "Application", "Template").CreateInBatches(&rows, 200).Error
+	})
 	if err != nil {
 		return BatchResult{}, writeError(err)
 	}
@@ -196,7 +204,7 @@ func (s *Service) List(ctx context.Context, f Filter) ([]LicenseInfo, int64, err
 		if s.sharing.Available() {
 			q = s.sharing.WithFlag(q, s.now().UTC())
 		}
-		return q.Preload("User").Preload("Application", func(tx *gorm.DB) *gorm.DB { return tx.Select("id", "name") })
+		return q.Preload("Template", func(tx *gorm.DB) *gorm.DB { return tx.Select("id", "name") }).Preload("User").Preload("Application", func(tx *gorm.DB) *gorm.DB { return tx.Select("id", "name") })
 	})
 	if err != nil {
 		return nil, 0, err

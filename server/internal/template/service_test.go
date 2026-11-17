@@ -63,8 +63,8 @@ func TestCRUDCopiesAndScopedAccess(t *testing.T) {
 	if x.Features["quota"].(json.Number).String() != "12345678901234567890" {
 		t.Fatal(x)
 	}
-	// Issuance stores the form values as an independent JSON object, not template IDs.
-	l := model.License{AppID: a.ID, Key: "snapshot", Features: x.Features}
+	// Editing a template does not automatically replace issued feature values.
+	l := model.License{AppID: a.ID, Key: "snapshot", Features: x.Features, TemplateID: &x.ID}
 	if e = d.Create(&l).Error; e != nil {
 		t.Fatal(e)
 	}
@@ -88,7 +88,7 @@ func TestCRUDCopiesAndScopedAccess(t *testing.T) {
 	if e = d.First(&got, l.ID).Error; e != nil {
 		t.Fatal(e)
 	}
-	if got.Features["export"] != true || got.Features["quota"].(json.Number).String() != "12345678901234567890" {
+	if got.TemplateID != nil || got.Features["export"] != true || got.Features["quota"].(json.Number).String() != "12345678901234567890" {
 		t.Fatal("issued license changed", got.Features)
 	}
 }

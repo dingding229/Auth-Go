@@ -31,7 +31,7 @@ func NewServiceWithClock(database *gorm.DB, now func() time.Time) *Service {
 }
 func findLicense(tx *gorm.DB, id uint64) (model.License, error) {
 	var l model.License
-	err := tx.Preload("User").Preload("Application", func(tx *gorm.DB) *gorm.DB { return tx.Select("id", "name") }).First(&l, id).Error
+	err := tx.Preload("Template", func(tx *gorm.DB) *gorm.DB { return tx.Select("id", "name") }).Preload("User").Preload("Application", func(tx *gorm.DB) *gorm.DB { return tx.Select("id", "name") }).First(&l, id).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		err = apperror.NotFound()
 	}

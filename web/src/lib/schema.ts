@@ -1,4 +1,5 @@
 import { opts } from "./labels";
+import type { Row } from "./json";
 import type { Column } from "../components/DataTable.vue";
 export type Values = Record<string, string | number | boolean | string[]>;
 export interface Field {
@@ -28,7 +29,7 @@ export interface Field {
   hint?: string;
   min?: number;
   max?: number;
-  immutable?: boolean;
+  immutable?: boolean | ((row: Row) => boolean);
   nullable?: boolean;
   visible?: (v: Values) => boolean;
 }
@@ -271,12 +272,14 @@ export const versionSpec: Spec = {
     field("encrypted", "代码加密（展示元数据）", {
       type: "switch",
       default: false,
-      hint: "由管理员在版本创建/编辑时登记；Docker Hub同步保留。不是授权信任源。",
+      immutable: (row) => !!row.build_verified,
+      hint: "未加密的版本，或尚未有实例解锁的加密版本，可手动登记；加密版本首次解锁后自动更正。已确认的元数据由加密构建的首次解锁自动登记，不可手动修改。",
     }),
     field("built_at", "构建时间", {
       type: "date",
       nullable: true,
-      hint: "启用代码加密时必填，取自打包产物payload.json的built_at；授权始终使用已认证信封而非此字段。",
+      immutable: (row) => !!row.build_verified,
+      hint: "由加密构建的首次解锁自动登记，多架构保留最早时间；未确认时启用代码加密必填。仅用于展示，授权始终使用已认证信封。",
     }),
     field("version", "版本号", {
       required: true,
@@ -291,6 +294,8 @@ export const versionSpec: Spec = {
   ],
   columns: [
     { key: "version", title: "版本号" },
+    { key: "encrypted", title: "代码加密" },
+    { key: "build_verified", title: "已由构建确认" },
     { key: "mandatory", title: "强制更新" },
     { key: "published_at", title: "发布时间", date: true },
   ],

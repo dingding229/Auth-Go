@@ -12,10 +12,20 @@ watch(
   () => {
     selected.value = "";
     applied.value = false;
+    emit("applied", { template_id: "" });
   },
 );
+watch(selected, (id) => {
+  if (!id) {
+    applied.value = false;
+    emit("applied", { template_id: "" });
+  }
+});
 function apply(t: Row) {
-  const values: Row = { features: stringify(t.features ?? {}, 2) };
+  const values: Row = {
+    template_id: idText(t.id),
+    features: stringify(t.features ?? {}, 2),
+  };
   if (t.default_max_activations != null)
     values.max_activations = Number(t.default_max_activations);
   if (t.default_days != null) {

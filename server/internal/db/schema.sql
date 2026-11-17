@@ -68,6 +68,7 @@ CREATE TABLE `app_versions` (`id` integer PRIMARY KEY AUTOINCREMENT,
   disabled numeric NOT NULL DEFAULT 0,
   encrypted integer NOT NULL DEFAULT 0 CHECK(encrypted IN (0,1)),
   built_at datetime,
+  build_verified integer NOT NULL DEFAULT 0 CHECK(build_verified IN (0,1)),
   CONSTRAINT `fk_app_versions_application` FOREIGN KEY (`app_id`) REFERENCES `applications`(`id`) ON DELETE RESTRICT);
 
 CREATE TABLE "applications" (`id` integer PRIMARY KEY AUTOINCREMENT,
@@ -194,6 +195,7 @@ CREATE TABLE "licenses" (`id` integer PRIMARY KEY AUTOINCREMENT,
   maintenance_until datetime,
   source text NOT NULL DEFAULT '',
   converted_at datetime,
+  template_id integer REFERENCES feature_templates(id) ON DELETE SET NULL,
   CONSTRAINT `fk_licenses_application` FOREIGN KEY (`app_id`) REFERENCES `applications`(`id`) ON DELETE RESTRICT,
   CONSTRAINT "fk_licenses_user" FOREIGN KEY ("user_id") REFERENCES "end_users"("id") ON DELETE RESTRICT);
 
@@ -331,6 +333,8 @@ CREATE UNIQUE INDEX idx_end_users_email ON end_users(email COLLATE NOCASE) WHERE
 CREATE INDEX `idx_end_users_status` ON `end_users`(`status`);
 
 CREATE INDEX idx_license_sharing_flagged ON license_sharing(flagged_at,ignored_until);
+
+CREATE INDEX idx_licenses_template_id ON licenses(template_id);
 
 CREATE INDEX `idx_licenses_app_id` ON `licenses`(`app_id`);
 

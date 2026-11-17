@@ -21,13 +21,19 @@ func TestBaselineIsAtomicAndIdempotent(t *testing.T) {
 		t.Fatal(e)
 	}
 	var versions []model.SchemaMigration
-	if e = d.Find(&versions).Error; e != nil || len(versions) != 1 || versions[0].Version != 1 || versions[0].Name != BaselineName {
+	if e = d.Order("version ASC").Find(&versions).Error; e != nil || len(versions) != 3 || versions[0].Version != 1 || versions[0].Name != BaselineName || versions[1].Version != 2 || versions[1].Name != "authgo_1_0_3_build_verified" || versions[2].Version != 3 || versions[2].Name != "authgo_1_0_3_license_template" {
 		t.Fatal(versions, e)
 	}
 	for _, table := range []string{"admins", "end_users", "licenses", "activations", "gateway_keys", "payload_keys", "docker_hub_sync_states", "feature_templates", "license_sharing", "trial_claims", "activation_instance_sessions", "publishing_credentials", "application_publishing"} {
 		if !d.Migrator().HasTable(table) {
 			t.Fatal("missing", table)
 		}
+	}
+	if !d.Migrator().HasColumn(&model.AppVersion{}, "build_verified") {
+		t.Fatal("missing build confirmation column")
+	}
+	if !d.Migrator().HasColumn(&model.License{}, "template_id") {
+		t.Fatal("missing license template source column")
 	}
 	var enabled int
 	if e = d.Raw("PRAGMA foreign_keys").Scan(&enabled).Error; e != nil || enabled != 1 {
@@ -55,7 +61,7 @@ func TestUnsupportedSchemaIsNotModified(t *testing.T) {
 	if e = d.Exec("CREATE TABLE marker(value text NOT NULL);INSERT INTO marker VALUES ('unchanged')").Error; e != nil {
 		t.Fatal(e)
 	}
-	if e = Migrate(d); e == nil || !strings.Contains(e.Error(), "本版本不支持从旧版本升级") {
+	if e = Migrate(d); e == nil || !strings.Contains(e.Error(), "数据库结构不受支持") {
 		t.Fatal(e)
 	}
 	var value string

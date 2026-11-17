@@ -127,6 +127,7 @@ func (s *Service) DeleteAnnouncement(ctx context.Context, id uint64) error {
 }
 
 type VersionInfo struct {
+	BuildVerified     bool       `json:"build_verified"`
 	Encrypted         bool       `json:"encrypted"`
 	BuiltAt           *time.Time `json:"built_at"`
 	Disabled          bool       `json:"disabled"`
@@ -142,7 +143,7 @@ type VersionInfo struct {
 }
 
 func VersionDTO(v model.AppVersion) VersionInfo {
-	return VersionInfo{v.Encrypted, v.BuiltAt, v.Disabled, v.Source, v.Withdrawn, v.MandatoryOverride, baseInfo(v.Base), v.AppID, v.Version, v.Changelog, v.Mandatory, v.PublishedAt}
+	return VersionInfo{v.BuildVerified, v.Encrypted, v.BuiltAt, v.Disabled, v.Source, v.Withdrawn, v.MandatoryOverride, baseInfo(v.Base), v.AppID, v.Version, v.Changelog, v.Mandatory, v.PublishedAt}
 }
 
 type VersionInput struct {
@@ -156,17 +157,20 @@ type VersionInput struct {
 }
 
 func applyVersion(v model.AppVersion, in VersionInput) (model.AppVersion, error) {
-	if in.Encrypted != nil {
-		v.Encrypted = *in.Encrypted
-	}
-	if err := updateTime(in.BuiltAt, &v.BuiltAt); err != nil {
-		return v, err
-	}
-	if v.Encrypted && v.BuiltAt == nil {
-		return v, apperror.Invalid("启用代码加密必须填写构建时间（仅展示，不用于授权）")
-	}
-	if !v.Encrypted {
-		v.BuiltAt = nil
+	// Authenticated build metadata cannot be overwritten by manual edits.
+	if !v.BuildVerified {
+		if in.Encrypted != nil {
+			v.Encrypted = *in.Encrypted
+		}
+		if err := updateTime(in.BuiltAt, &v.BuiltAt); err != nil {
+			return v, err
+		}
+		if v.Encrypted && v.BuiltAt == nil {
+			return v, apperror.Invalid("启用代码加密必须填写构建时间（仅展示，不用于授权）")
+		}
+		if !v.Encrypted {
+			v.BuiltAt = nil
+		}
 	}
 	if in.Disabled != nil {
 		v.Disabled = *in.Disabled

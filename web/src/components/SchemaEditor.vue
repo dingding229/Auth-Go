@@ -26,6 +26,14 @@ let resetting = false;
 const visible = computed(() =>
   props.fields.filter((f) => !f.visible || f.visible(values)),
 );
+function immutable(f: Field): boolean {
+  return (
+    !!props.editing &&
+    (typeof f.immutable === "function"
+      ? f.immutable(props.initial ?? {})
+      : !!f.immutable)
+  );
+}
 function update(key: string, value: unknown) {
   values[key] = Array.isArray(value)
     ? value.map(String)
@@ -132,7 +140,7 @@ const rules = computed<FormRules>(() =>
               (typeof f.required === "function"
                 ? f.required(values)
                 : f.required) &&
-              (!props.editing || !f.immutable) &&
+              !immutable(f) &&
               (v === "" ||
                 v === undefined ||
                 (Array.isArray(v) && v.length === 0))
@@ -231,8 +239,7 @@ async function submit() {
   try {
     for (const f of visible.value) {
       const v = values[f.key];
-      if ((props.editing && f.immutable) || (f.type === "password" && !v))
-        continue;
+      if (immutable(f) || (f.type === "password" && !v)) continue;
       if (f.type === "validity") {
         Object.assign(body, validityPayload(values));
         continue;
@@ -348,7 +355,7 @@ defineExpose({ reset, submit, values, advancedOpen });
               v-else-if="f.type === 'resource'"
               :model-value="String(values[f.key] || '')"
               :endpoint="f.resource!"
-              :disabled="editing && f.immutable"
+              :disabled="immutable(f)"
               @update:model-value="update(f.key, $event)"
             />
             <number-input
@@ -364,6 +371,7 @@ defineExpose({ reset, submit, values, advancedOpen });
             />
             <el-switch
               v-else-if="f.type === 'switch'"
+              :disabled="immutable(f)"
               :model-value="Boolean(values[f.key])"
               @update:model-value="update(f.key, $event)"
             />
@@ -412,6 +420,7 @@ defineExpose({ reset, submit, values, advancedOpen });
             </div>
             <el-date-picker
               v-else-if="f.type === 'date'"
+              :disabled="immutable(f)"
               :model-value="String(values[f.key] || '')"
               type="datetime"
               value-format="YYYY-MM-DDTHH:mm:ssZ"

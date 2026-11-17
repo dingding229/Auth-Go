@@ -16,6 +16,7 @@ import (
 
 type CreateInput struct {
 	maintenance.Input
+	TemplateID     *uint64         `json:"template_id"`
 	UserID         *uint64         `json:"user_id"`
 	AppID          uint64          `json:"app_id"`
 	Prefix         string          `json:"prefix"`
@@ -76,6 +77,21 @@ func (s *Service) prepare(ctx context.Context, in CreateInput) (model.License, s
 	}
 	if err := applyCreateFields(&l, in); err != nil {
 		return l, "", err
+	}
+	if in.TemplateID != nil {
+		if *in.TemplateID == 0 || *in.TemplateID > math.MaxInt64 {
+			return l, "", apperror.Invalid("模板编号无效")
+		}
+		var source model.FeatureTemplate
+		if err := tx.Where("id=? AND app_id=?", *in.TemplateID, l.AppID).First(&source).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return l, "", apperror.Invalid("模板不存在或不属于此软件")
+			}
+			return l, "", err
+		}
+		if l.Type != model.LicenseTrial {
+			l.TemplateID, l.Template = &source.ID, &source
+		}
 	}
 	if err := validateCreatePolicy(l); err != nil {
 		return l, "", err

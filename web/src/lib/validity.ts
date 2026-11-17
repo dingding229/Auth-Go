@@ -1,5 +1,5 @@
 import type { Values } from "./schema";
-import type { Row } from "./json";
+import { parseJSON, idText, type Row } from "./json";
 export function validityPayload(values: Values): Row {
   const rule = String(values.validity_rule || "perpetual");
   if (rule === "fixed_days" || rule === "after_activation") {
@@ -19,6 +19,12 @@ export function validityPayload(values: Values): Row {
 }
 export function licenseRequest(body: Row) {
   const { count: raw, ...data } = body;
+  const template = idText(data.template_id);
+  if (data.type === "trial" || !template) delete data.template_id;
+  else {
+    if (!/^[1-9]\d*$/.test(template)) throw new Error("模板编号无效");
+    data.template_id = parseJSON(template);
+  }
   const count = Number(raw ?? 1);
   if (!Number.isInteger(count) || count < 1 || count > 10000)
     throw new Error("生成数量必须为1至10000");

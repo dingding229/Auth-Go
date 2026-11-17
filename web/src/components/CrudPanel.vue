@@ -19,6 +19,7 @@ const props = defineProps<{
   createPath?: string;
   embedded?: boolean;
   editFromRow?: boolean;
+  actionsWidth?: number;
 }>();
 const emit = defineEmits<{ created: [row: Row] }>();
 const path = computed(() => props.listPath || props.spec.path);
@@ -89,7 +90,9 @@ defineExpose({ create: () => edit() });
     >
       <template v-if="!['users', 'applications'].includes(spec.key)" #fields>
         <label class="query-field">
-          <span>排序字段</span>
+          <span>
+            排序字段
+          </span>
           <el-select
             :model-value="String(list.query.value.sort_by || 'created_at')"
             @update:model-value="sort('sort_by', $event)"
@@ -103,7 +106,9 @@ defineExpose({ create: () => edit() });
           </el-select>
         </label>
         <label class="query-field">
-          <span>方向</span>
+          <span>
+            方向
+          </span>
           <el-select
             :model-value="String(list.query.value.sort_order || 'desc')"
             @update:model-value="sort('sort_order', $event)"
@@ -129,11 +134,12 @@ defineExpose({ create: () => edit() });
       "
       :items="list.items.value"
       :columns="spec.columns"
-      :actions-width="144"
+      :actions-width="actionsWidth ?? 144"
       :actions-fixed="spec.key !== 'users'"
       :loading="list.loading.value"
     >
       <template #actions="{ row }">
+        <slot name="actions" :row="row" />
         <el-button link type="primary" @click="edit(row)">
           编辑
         </el-button>

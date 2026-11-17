@@ -295,6 +295,7 @@ func GetAdminApplicationsIdPublicKey() {}
 func GetAdminLicenses() {}
 
 // @Summary 授权 POST /licenses
+// @Description template_id 可选且须属于同一软件，只记录来源；功能项以请求 features 为准，试用授权不记录来源。
 // @Tags 授权
 // @Produce json
 // @Security AdminBearer
@@ -586,6 +587,7 @@ func PostAdminApplicationsIdVersions() {}
 func GetAdminVersionsId() {}
 
 // @Description disabled独立于withdrawn；禁用后已上报该版本的授权校验返回VERSION_DISABLED及latest_version，旧版本仍可检查更新。
+// @Description build_verified 为 true 时忽略 encrypted 和 built_at 的修改；其他字段照常更新。
 // @Summary 版本 PATCH /versions/:id
 // @Tags 版本
 // @Produce json
@@ -1301,7 +1303,7 @@ func featureTemplatesList() {}
 // @Router /api/v1/admin/applications/{id}/templates [post]
 func featureTemplatesCreate() {}
 
-// @Summary 修改功能模板（不影响已发放授权）
+// @Summary 修改功能模板（不自动同步已发放授权）
 // @Tags 功能模板
 // @Security AdminBearer
 // @Accept json
@@ -1315,7 +1317,7 @@ func featureTemplatesCreate() {}
 // @Router /api/v1/admin/applications/{id}/templates/{template_id} [patch]
 func featureTemplatesUpdate() {}
 
-// @Summary 删除未被试用设置引用的功能模板
+// @Summary 删除功能模板（清空授权来源关联，保留功能项）
 // @Tags 功能模板
 // @Security AdminBearer
 // @Produce json
@@ -1928,3 +1930,56 @@ type BackupListResponse struct {
 // @Failure 400,401,403,404,409,429,500 {object} Envelope
 // @Router /api/v1/admin/system/backups/{name}/export [post]
 func ExportAdminBackup() {}
+
+// @Summary 为正式授权套用功能模板
+// @Description 模板须属于授权的软件；整体替换功能项并记录来源，不改实例数、有效期和维护期；试用授权拒绝。下次在线验证或心跳生效，离线签名缓存保持原功能项。
+// @Tags 授权
+// @Security AdminBearer
+// @Accept json
+// @Produce json
+// @Param id path int true "授权编号"
+// @Param body body licensing.TemplateInput true "功能模板编号"
+// @Success 200 {object} LicenseInfoResponse
+// @Failure 400,401,403,404,429,500 {object} Envelope
+// @Router /api/v1/admin/licenses/{id}/template [post]
+func applyLicenseTemplate() {}
+
+// @Summary 获取模板可同步授权数量
+// @Description linked 为关联此模板的正式授权数，all 为此软件的全部正式授权数；均排除试用。
+// @Tags 功能模板
+// @Security AdminBearer
+// @Produce json
+// @Param id path int true "软件编号"
+// @Param template_id path int true "模板编号"
+// @Success 200 {object} TemplateCountsResponse
+// @Failure 400,401,403,404,429,500 {object} Envelope
+// @Router /api/v1/admin/applications/{id}/templates/{template_id}/counts [get]
+func templateLicenseCounts() {}
+
+// @Summary 显式同步模板功能项到授权
+// @Description linked 仅同步关联授权，all 同步此软件正式授权，排除试用；功能项整体替换并记录模板来源，不改实例数、有效期、维护期。功能项已相同的授权不计入数量；all 范围仍会为它们记录模板来源。修改模板本身不触发同步。
+// @Tags 功能模板
+// @Security AdminBearer
+// @Accept json
+// @Produce json
+// @Param id path int true "软件编号"
+// @Param template_id path int true "模板编号"
+// @Param body body template.SyncInput true "同步范围 linked 或 all"
+// @Success 200 {object} TemplateSyncResponse
+// @Failure 400,401,403,404,429,500 {object} Envelope
+// @Router /api/v1/admin/applications/{id}/templates/{template_id}/sync [post]
+func syncTemplateLicenses() {}
+
+type TemplateCountsResponse struct {
+	Code string          `json:"code"`
+	Data template.Counts `json:"data"`
+}
+type TemplateSyncResponse struct {
+	Code string              `json:"code"`
+	Data template.SyncResult `json:"data"`
+}
+
+type LicenseInfoResponse struct {
+	Code string                `json:"code"`
+	Data licensing.LicenseInfo `json:"data"`
+}
