@@ -24,7 +24,10 @@ func licenseFilter(c *gin.Context) (licensing.Filter, error) {
 	if err != nil {
 		return licensing.Filter{}, err
 	}
-	f := licensing.Filter{Query: q, Status: c.Query("status"), Type: c.Query("type"), BatchID: c.Query("batch_id"), Source: c.Query("source")}
+	if value := c.Query("exclude_trial"); value != "" && value != "true" && value != "false" {
+		return licensing.Filter{}, apperror.Invalid("排除试用筛选必须为 true 或 false")
+	}
+	f := licensing.Filter{ExcludeTrial: c.Query("exclude_trial") == "true", Query: q, Status: c.Query("status"), Type: c.Query("type"), BatchID: c.Query("batch_id"), Source: c.Query("source")}
 	if c.Query("suspected_sharing") != "" {
 		if c.Query("suspected_sharing") != "true" && c.Query("suspected_sharing") != "false" {
 			return f, apperror.Invalid("疑似共享筛选必须为 true 或 false")
@@ -141,6 +144,24 @@ func registerLicensing(r *gin.Engine, s *licensing.Service, identity *auth.Servi
 		}
 		rows, total, err := s.List(c.Request.Context(), f)
 		return f.Query.Data(rows, total), err
+	}))
+	licenses.DELETE("/:id", middleware.Action("license.delete", "license"), withID(func(c *gin.Context, id uint64) (any, error) {
+		out, err := s.Delete(c.Request.Context(), id)
+		if err == nil {
+			c.Set("audit_license_suffix", out.KeySuffix)
+		}
+		return out, err
+	}))
+	licenses.POST("/purge-revoked", middleware.Action("license.purge_revoked", "license"), withBody(func(c *gin.Context, in licensing.PurgeInput) (any, error) {
+		principal, _ := middleware.Principal(c)
+		out, err := s.PurgeRevoked(c.Request.Context(), in, licensing.DeleteActor{ID: principal.AdminID, Name: principal.Username, IP: c.ClientIP()})
+		if err == nil {
+			c.Set("audit_deleted_count", out.Count)
+			if in.AppID != nil {
+				c.Set("audit_deleted_app_id", *in.AppID)
+			}
+		}
+		return out, err
 	}))
 	licenses.POST("", middleware.Action("license.create", "license"), withBody(func(c *gin.Context, in licensing.CreateInput) (any, error) {
 		l, err := s.Create(c.Request.Context(), in)

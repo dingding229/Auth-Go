@@ -354,6 +354,7 @@ describe("筛选渐进展示与URL", () => {
       "状态",
       "到期时间",
       "实例数",
+      "操作",
     ]);
     expect(root.querySelector(".el-table-fixed-column--right")).toBeNull();
     // At 1024px the 216px sidebar, 48px content padding and 32px panel padding leave 728px.

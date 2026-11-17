@@ -109,6 +109,21 @@ func Audit(database *gorm.DB, log *slog.Logger, auditedReads ...string) gin.Hand
 					entry.Details["template_id"] = n
 				}
 			}
+			if suffix, ok := c.Get("audit_license_suffix"); ok {
+				if value, valid := suffix.(string); valid && len(value) <= 4 {
+					entry.Details["key_suffix"] = value
+				}
+			}
+			if count, ok := c.Get("audit_deleted_count"); ok {
+				if value, valid := count.(int64); valid {
+					entry.Details["count"] = value
+				}
+			}
+			if app, ok := c.Get("audit_deleted_app_id"); ok {
+				if value, valid := app.(uint64); valid {
+					entry.Details["app_id"] = value
+				}
+			}
 			entry.StatusCode = status
 			entry.Summary = fmt.Sprintf("%s %s → %d (%s)", c.Request.Method, route, status, code)
 			// A panic has not yet reached the outer recovery middleware. Keep the

@@ -75,6 +75,9 @@ func (s *Service) scanLicenses(ctx context.Context, now time.Time) error {
 				// Re-read inside the write transaction: concurrent renewal/revoke wins.
 				var current model.License
 				if e := tx.First(&current, l.ID).Error; e != nil {
+					if errors.Is(e, gorm.ErrRecordNotFound) {
+						return nil
+					}
 					return e
 				}
 				l = current

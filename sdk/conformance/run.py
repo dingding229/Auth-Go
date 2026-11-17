@@ -393,6 +393,17 @@ def main():
                 expect("activate_recovery", dict(op="check", key=key), status="online")
                 expect("switch_key", dict(op="check", key=other), status="online")
                 expect("switch_back", dict(op="check", key=key), status="online")
+                for operation in ["verify", "heartbeat"]:
+                    before = cache_snapshot()
+                    api("/control", dict(mode="LICENSE_NOT_FOUND"))
+                    expect("deleted_license_" + operation, dict(op=operation), code="LICENSE_NOT_FOUND")
+                    assert cache_snapshot() != before, "deleted authorization did not invalidate persisted state"
+                    api("/control", dict(mode="disconnect"))
+                    expect("deleted_license_reload_" + operation, base, status="ready")
+                    denied = command(dict(op="verify"))
+                    assert denied.get("code") != "OK" and "status" not in denied, "deleted license reopened offline grace"
+                    api("/control", dict(mode=""))
+                    expect("deleted_license_recovery_" + operation, dict(op="check", key=key), status="online")
                 api("/control", dict(mode="UNKNOWN_AUTHENTICATED_ERROR"))
                 before = cache_snapshot()
                 expect("unknown_update_refusal", dict(op="check_update"), code="UNKNOWN_AUTHENTICATED_ERROR")

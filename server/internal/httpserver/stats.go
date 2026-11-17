@@ -147,7 +147,7 @@ func registerStats(r *gin.Engine, database *gorm.DB, identity *auth.Service, ips
 				key = v.License.Key
 				source = v.License.Source
 			}
-			out = append(out, gin.H{"license_source": source, "license_key": key, "id": v.ID, "created_at": v.CreatedAt, "app_id": v.AppID, "license_id": v.LicenseID, "activation_id": v.ActivationID, "action": v.Action, "code": v.Code, "success": v.Success, "reason": v.Reason, "ip": v.IP, "device": v.Device, "client_version": v.ClientVersion, "duration_ms": v.DurationMS})
+			out = append(out, gin.H{"license_deleted": v.LicenseID == nil && strings.HasPrefix(v.Reason, model.DeletedLicenseReason), "license_source": source, "license_key": key, "id": v.ID, "created_at": v.CreatedAt, "app_id": v.AppID, "license_id": v.LicenseID, "activation_id": v.ActivationID, "action": v.Action, "code": v.Code, "success": v.Success, "reason": v.Reason, "ip": v.IP, "device": v.Device, "client_version": v.ClientVersion, "duration_ms": v.DurationMS})
 			if v := locations[v.IP]; v != nil {
 				out[len(out)-1]["ip_info"] = v
 			}

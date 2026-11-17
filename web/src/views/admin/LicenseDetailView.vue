@@ -10,8 +10,8 @@ import KeyValueItem from "../../components/KeyValueItem.vue";
 import KeyValueList from "../../components/KeyValueList.vue";
 import SectionPanel from "../../components/SectionPanel.vue";
 import { computed, reactive, ref, watch } from "vue";
-import { useRoute } from "vue-router";
-import { get, post, patch } from "../../lib/http";
+import { useRoute, useRouter } from "vue-router";
+import { get, post, patch, remove } from "../../lib/http";
 import { dateText, idText, text, parseJSON, type Row } from "../../lib/json";
 import { activationQuota, effectiveDays } from "../../lib/presentation";
 import { maintenanceText, renewalMaintenance } from "../../lib/maintenance";
@@ -22,6 +22,7 @@ import { useCollection } from "../../composables/collection";
 import { logColumns, field } from "../../lib/schema";
 import SchemaEditor from "../../components/SchemaEditor.vue";
 import TemplateSelect from "../../components/TemplateSelect.vue";
+import { canDeleteLicense, confirmLicenseDeletion } from "../../lib/licenses";
 
 import ActionMenu from "../../components/ActionMenu";
 import PageHeading from "../../components/PageHeading.vue";
@@ -30,6 +31,7 @@ import JsonBlock from "../../components/JsonBlock.vue";
 import DataTable from "../../components/DataTable.vue";
 import ListPager from "../../components/ListPager.vue";
 const route = useRoute(),
+  router = useRouter(),
   task = useTask(),
   value = ref<Row>(),
   id = computed(() => String(route.params.id));
@@ -114,6 +116,17 @@ async function applyTemplate() {
   }, "功能模板已套用");
 }
 
+async function destroy() {
+  const row = value.value;
+  if (!row || !canDeleteLicense(row)) return;
+  await task.run(async () => {
+    const selected = detail.capture();
+    await confirmLicenseDeletion(row);
+    selected.check();
+    await remove(`/licenses/${selected.id}`);
+    if (selected.current()) await router.push(adminPage("/licenses"));
+  }, "授权已删除");
+}
 async function state(action: string) {
   await task.run(async () => {
     const selected = detail.capture();
@@ -251,6 +264,14 @@ async function saveAssignment(body: Row) {
         @click="openTemplate"
       >
         套用功能模板
+      </el-button>
+      <el-button
+        v-if="value && canDeleteLicense(value)"
+        type="danger"
+        :disabled="!detail.ready.value || task.busy.value"
+        @click="destroy"
+      >
+        删除授权
       </el-button>
       <template v-if="value && value.status !== 'revoked'">
         <el-button
@@ -404,17 +425,19 @@ async function saveAssignment(body: Row) {
           <p>
             用户可使用授权码与查询密码登录；分配给用户后，也可通过用户账号查询。
           </p>
-          <el-button
-            :disabled="!detail.ready.value || task.busy.value"
-            @click="passwordOpen = true"
-          >
-            设置授权查询密码
-          </el-button>
-          <router-link to="/portal/login" target="_blank">
-            <el-button :disabled="!detail.ready.value || task.busy.value">
-              打开用户中心
+          <div class="action-toolbar">
+            <el-button
+              :disabled="!detail.ready.value || task.busy.value"
+              @click="passwordOpen = true"
+            >
+              设置授权查询密码
             </el-button>
-          </router-link>
+            <router-link to="/portal/login" target="_blank">
+              <el-button :disabled="!detail.ready.value || task.busy.value">
+                打开用户中心
+              </el-button>
+            </router-link>
+          </div>
         </section-panel>
       </el-tab-pane>
       <el-tab-pane label="验证记录">

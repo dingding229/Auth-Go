@@ -499,6 +499,17 @@
                 },
                 "type": "object"
             },
+            "apidocs.LicenseDeleteResponse": {
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/licensing.DeleteInfo"
+                    }
+                },
+                "type": "object"
+            },
             "apidocs.LicenseDetailResponse": {
                 "properties": {
                     "code": {
@@ -567,6 +578,17 @@
                     "signature": {},
                     "ts": {
                         "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "apidocs.LicensePurgeResponse": {
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "data": {
+                        "$ref": "#/components/schemas/licensing.PurgeResult"
                     }
                 },
                 "type": "object"
@@ -2394,6 +2416,17 @@
                 },
                 "type": "object"
             },
+            "licensing.DeleteInfo": {
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "key_suffix": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "licensing.Detail": {
                 "properties": {
                     "activations": {
@@ -2607,6 +2640,22 @@
                         },
                         "type": "array",
                         "uniqueItems": false
+                    }
+                },
+                "type": "object"
+            },
+            "licensing.PurgeInput": {
+                "properties": {
+                    "app_id": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "licensing.PurgeResult": {
+                "properties": {
+                    "count": {
+                        "type": "integer"
                     }
                 },
                 "type": "object"
@@ -9369,6 +9418,14 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "description": "排除试用及有试用领取记录的授权",
+                        "in": "query",
+                        "name": "exclude_trial",
+                        "schema": {
+                            "type": "boolean"
+                        }
                     }
                 ],
                 "responses": {
@@ -10232,7 +10289,191 @@
                 ]
             }
         },
+        "/api/v1/admin/licenses/purge-revoked": {
+            "post": {
+                "description": "分批读取、事务删除；app_id 为空时清理全部软件，排除试用及有试用领取记录的授权，返回删除数量。验证日志、邮件历史和审计保留。",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/licensing.PurgeInput",
+                                "summary": "body",
+                                "description": "可选软件编号；全部范围提交空对象"
+                            }
+                        }
+                    },
+                    "description": "可选软件编号；全部范围提交空对象",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.LicensePurgeResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    }
+                },
+                "security": [
+                    {
+                        "AdminBearer": []
+                    }
+                ],
+                "summary": "批量清理已吊销的正式授权",
+                "tags": [
+                    "授权"
+                ]
+            }
+        },
         "/api/v1/admin/licenses/{id}": {
+            "delete": {
+                "description": "只能删除已吊销且无试用领取记录的正式授权。删除激活和会话，验证日志保留且关联置空；审计仅记录编号和授权码后4位。不可恢复。",
+                "parameters": [
+                    {
+                        "description": "授权编号",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.LicenseDeleteResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/apidocs.Envelope"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    }
+                },
+                "security": [
+                    {
+                        "AdminBearer": []
+                    }
+                ],
+                "summary": "删除已吊销的正式授权",
+                "tags": [
+                    "授权"
+                ]
+            },
             "get": {
                 "description": "IP 库未启用时省略 ip_info；启用后按原始 IP 批量去重后本地查询。实例 ip_info 对应 last_ip。用户中心原有 IP 脱敏保持不变，ip_info 不包含原始 IP。",
                 "parameters": [

@@ -9,9 +9,10 @@ import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { useCollection } from "../../composables/collection";
 import { confirmAction, useTask } from "../../composables/tasks";
-import { download, post, get, fetchAll } from "../../lib/http";
-import { idText, rows, type Row, cleanParams } from "../../lib/json";
+import { download, post, get, fetchAll, remove } from "../../lib/http";
+import { idText, rows, type Row, cleanParams, parseJSON } from "../../lib/json";
 import { field, licenseFields } from "../../lib/schema";
+import { canDeleteLicense, confirmLicenseDeletion } from "../../lib/licenses";
 import { licenseRequest } from "../../lib/validity";
 import { maintenanceText } from "../../lib/maintenance";
 import { instanceUsage } from "../../lib/presentation";
@@ -136,6 +137,41 @@ const tableItems = computed<Row[]>(() =>
     user_name: row.user_name || "未分配",
   })),
 );
+async function destroy(row: Row) {
+  if (!canDeleteLicense(row)) return;
+  await task.run(async () => {
+    await confirmLicenseDeletion(row);
+    await remove(`/licenses/${idText(row.id)}`);
+    await list.load();
+  }, "授权已删除");
+}
+async function purgeRevoked() {
+  await task.run(async () => {
+    const app = idText(list.query.value.app_id);
+    const data = await get("/licenses", {
+      status: "revoked",
+      exclude_trial: true,
+      page_size: 1,
+      ...(app ? { app_id: app } : {}),
+    });
+    const count = Number(data.total),
+      scope = app ? `软件 ${app}` : "全部软件";
+    if (!count) throw new Error("当前范围内没有可删除的已吊销正式授权");
+    await confirmAction(
+      `将永久删除${scope}下 ${count} 个已吊销的正式授权及其激活记录，验证日志保留。此操作无法恢复。`,
+      "清理已吊销授权",
+      { action: "清理已吊销授权", danger: true },
+    );
+    if (app !== idText(list.query.value.app_id))
+      throw new Error("软件筛选已改变，请重新操作");
+    const result = await post(
+      "/licenses/purge-revoked",
+      app ? { app_id: parseJSON(app) } : {},
+    );
+    await list.load();
+    ElMessage.success(`已删除 ${Number(result.count)} 个授权`);
+  });
+}
 async function save(body: Row) {
   await task.run(async () => {
     const request = licenseRequest(body);
@@ -202,6 +238,9 @@ async function importCSV(event: Event) {
     <el-button @click="fileInput?.click()">
       导入CSV
     </el-button>
+    <el-button type="danger" :disabled="task.busy.value" @click="purgeRevoked">
+      清理已吊销授权
+    </el-button>
     <el-button type="primary" @click="create()">
       创建授权
     </el-button>
@@ -232,7 +271,7 @@ async function importCSV(event: Event) {
         Object.values(list.query.value).some((v) => v !== '' && v != null)
       "
       :items="tableItems"
-      :actions-width="82"
+      :actions-width="56"
       :actions-fixed="false"
       :loading="list.loading.value"
       :columns="[
@@ -247,6 +286,17 @@ async function importCSV(event: Event) {
         { key: 'online_instances', title: '实例数', width: 88 },
       ]"
     >
+      <template #actions="{ row }">
+        <el-button
+          v-if="canDeleteLicense(row)"
+          link
+          type="danger"
+          :disabled="task.busy.value"
+          @click="destroy(row)"
+        >
+          删除
+        </el-button>
+      </template>
       <template #cell-status="{ row }">
         <span class="sharing-status">
           <status-badge :value="row.status" />

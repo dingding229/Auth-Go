@@ -130,7 +130,9 @@ const columns = computed<Column[]>(() => [
         >
           {{ keyTail(row.license_key) }}
         </router-link>
-        <span v-else>—</span>
+        <span v-else>
+          {{ row.license_deleted ? "已删除的授权" : "—" }}
+        </span>
       </template>
       <template #cell-license_source="{ row }">
         {{

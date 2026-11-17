@@ -108,6 +108,8 @@ type Activation struct {
 	LeaseExpiresAt    *time.Time `gorm:"index"`
 }
 
+const DeletedLicenseReason = "授权已删除；"
+
 type VerifyLog struct {
 	ID            uint64       `gorm:"primaryKey"`
 	CreatedAt     time.Time    `gorm:"index"`

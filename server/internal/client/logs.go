@@ -114,6 +114,7 @@ func (w *logWriter) run() {
 				// A management deletion may race an enqueued request. Keep the log but
 				// detach absent relations instead of losing the entire batch to an FK.
 				for i := range batch {
+					hadLicense := batch[i].LicenseID != nil
 					for _, ref := range []struct {
 						entity any
 						id     **uint64
@@ -128,6 +129,9 @@ func (w *logWriter) run() {
 						if n == 0 {
 							*ref.id = nil
 						}
+					}
+					if hadLicense && batch[i].LicenseID == nil {
+						batch[i].Reason = model.DeletedLicenseReason + batch[i].Reason
 					}
 				}
 				return tx.Omit("Application", "License", "Activation").Create(&batch).Error

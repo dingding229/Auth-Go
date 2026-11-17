@@ -291,6 +291,7 @@ func GetAdminApplicationsIdPublicKey() {}
 // @Param sort_order query string false "sort_order；规则见接口契约"
 // @Success 200 {object} LicenseListResponse "操作成功"
 // @Failure 400,401,403,404,409,429,500 {object} Envelope
+// @Param exclude_trial query boolean false "排除试用及有试用领取记录的授权"
 // @Router /api/v1/admin/licenses [get]
 func GetAdminLicenses() {}
 
@@ -1982,4 +1983,36 @@ type TemplateSyncResponse struct {
 type LicenseInfoResponse struct {
 	Code string                `json:"code"`
 	Data licensing.LicenseInfo `json:"data"`
+}
+
+// @Summary 删除已吊销的正式授权
+// @Description 只能删除已吊销且无试用领取记录的正式授权。删除激活和会话，验证日志保留且关联置空；审计仅记录编号和授权码后4位。不可恢复。
+// @Tags 授权
+// @Security AdminBearer
+// @Produce json
+// @Param id path int true "授权编号"
+// @Success 200 {object} LicenseDeleteResponse
+// @Failure 400,401,403,404,429,500 {object} Envelope
+// @Router /api/v1/admin/licenses/{id} [delete]
+func deleteRevokedLicense() {}
+
+// @Summary 批量清理已吊销的正式授权
+// @Description 分批读取、事务删除；app_id 为空时清理全部软件，排除试用及有试用领取记录的授权，返回删除数量。验证日志、邮件历史和审计保留。
+// @Tags 授权
+// @Security AdminBearer
+// @Accept json
+// @Produce json
+// @Param body body licensing.PurgeInput true "可选软件编号；全部范围提交空对象"
+// @Success 200 {object} LicensePurgeResponse
+// @Failure 400,401,403,429,500 {object} Envelope
+// @Router /api/v1/admin/licenses/purge-revoked [post]
+func purgeRevokedLicenses() {}
+
+type LicenseDeleteResponse struct {
+	Code string               `json:"code"`
+	Data licensing.DeleteInfo `json:"data"`
+}
+type LicensePurgeResponse struct {
+	Code string                `json:"code"`
+	Data licensing.PurgeResult `json:"data"`
 }

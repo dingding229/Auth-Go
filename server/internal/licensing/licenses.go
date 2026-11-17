@@ -152,6 +152,7 @@ func (s *Service) Batch(ctx context.Context, in BatchInput) (BatchResult, error)
 }
 
 type Filter struct {
+	ExcludeTrial                  bool
 	SuspectedSharing              bool
 	Query                         response.ListQuery
 	AppID                         *uint64
@@ -174,6 +175,9 @@ func filterQuery(tx *gorm.DB, f Filter) *gorm.DB {
 	}
 	if f.Status != "" {
 		q = q.Where("licenses.status = ?", f.Status)
+	}
+	if f.ExcludeTrial {
+		q = q.Where("licenses.type<>'trial' AND NOT EXISTS (SELECT 1 FROM trial_claims WHERE trial_claims.license_id=licenses.id)")
 	}
 	if f.Type != "" {
 		q = q.Where("licenses.type = ?", f.Type)

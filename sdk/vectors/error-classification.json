@@ -190,6 +190,18 @@
       "code": "VERSION_NOT_ALLOWED",
       "class": "refusal",
       "clear_cache": true
+    },
+    {
+      "authenticated": true,
+      "code": "LICENSE_NOT_FOUND",
+      "class": "refusal",
+      "clear_cache": true
+    },
+    {
+      "authenticated": false,
+      "code": "LICENSE_NOT_FOUND",
+      "class": "connection_failure",
+      "clear_cache": false
     }
   ],
   "update_cases": [
@@ -252,6 +264,12 @@
       "authenticated": true,
       "code": "RATE_LIMITED",
       "clear_cache": false
+    },
+    {
+      "op": "update.check",
+      "authenticated": true,
+      "code": "LICENSE_NOT_FOUND",
+      "clear_cache": false
     }
   ],
   "instance_cases": [
@@ -291,6 +309,11 @@
       "code": "SDK_NETWORK_ERROR",
       "clear_cache": false,
       "write_refused": false
+    },
+    {
+      "code": "LICENSE_NOT_FOUND",
+      "clear_cache": true,
+      "write_refused": true
     }
   ],
   "authorization_exception_rule": "INSTANCE_REPLACED is an authenticated explicit refusal and never falls back, but does not clear the cache or write Refused; the rejected process stops and may not reuse grace. release-seat success, transport faults and temporary errors preserve local authorization state; fully authenticated refusals clear it except INSTANCE_REPLACED."
