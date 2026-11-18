@@ -6,6 +6,7 @@
 - `canonical.json`、`hkdf.json`：精确 JSON 规范化与 RFC5869 派生。
 - `error-classification.json`：认证未完成不清证据；临时允许名单外的已认证非 OK 码（含未知码）默认拒绝。更新检查失败不改变授权缓存；INSTANCE_REPLACED 停止被替换进程但保留共享证据。
 - `update-response.json`：当前 Docker Hub 更新、维护期与续费提示的签名响应。
+- `versions-response.json`：持证历史分页、纯文本日志及维护期标记的签名响应；Go SDK 校验其规范字节、签名及请求绑定。
 - `fingerprint.json`、`container-identity.json`、`instance-session.json`：稳定物理指纹、容器身份及进程接管/席位/宽限。指纹预期值不可改变。
 - `license-key.json`：授权码字符、大小写、分组和校验位。
 - `payload-envelope.json`：当前 payload v2 信封绑定、AES-GCM 分块、nonce 与认证数据。

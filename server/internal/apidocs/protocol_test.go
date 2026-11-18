@@ -29,7 +29,7 @@ func TestEmbeddedProtocolDocument(t *testing.T) {
 		"SIGNATURE_INVALID", "INVALID_REQUEST", "PAYLOAD_INVALID", "所有未知错误码",
 		"SDK_CLOCK_ROLLBACK", "SDK_GRACE_EXPIRED", "SDK_CACHE_UNAVAILABLE",
 		"activate", "verify", "heartbeat", "deactivate", "release-seat", "public-key",
-		"announcement", "version", "update.check", "trial", "payload.unlock",
+		"announcement", "version", "update.check", "versions", "next_cursor", "entitled", "trial", "payload.unlock",
 		"4611686018427387903", "1048576", "65535", "SOURCE_DATE_EPOCH",
 		`authgo-payload-envelope-v2\x00`, `authgo-payload-rewrap-v2\x00`,
 		"authgo/payload/v1/wrap", "authgo/payload/v1/rewrap", `authgo-payload-chunk-v1\x00`,

@@ -64,7 +64,7 @@ func TestInstanceSessionWireValidation(t *testing.T) {
 	for _, v := range []string{"x", strings.Repeat("a", 21), strings.Repeat("a", 24)} {
 		raw, _ := json.Marshal(Input{InstanceSession: v})
 		var in Input
-		if decode(raw, &in) {
+		if decode(raw, "verify", &in) {
 			t.Fatal("invalid session", v)
 		}
 	}

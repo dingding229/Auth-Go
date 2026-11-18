@@ -85,11 +85,32 @@ func validText(v string, n int) bool {
 	}
 	return true
 }
-func decode(body []byte, in *Input) bool {
+func decode(body []byte, op string, in *Input) bool {
 	d := json.NewDecoder(bytes.NewReader(body))
 	d.DisallowUnknownFields()
 	d.UseNumber()
-	if d.Decode(in) != nil {
+	if op == "versions" {
+		// Keep the additional fields out of the schema for existing operations.
+		var params struct {
+			*Input
+			Limit  json.RawMessage `json:"limit"`
+			Before json.RawMessage `json:"before"`
+		}
+		params.Input = in
+		if d.Decode(&params) != nil {
+			return false
+		}
+		if params.Limit != nil && (json.Unmarshal(params.Limit, &in.historyLimit) != nil || in.historyLimit == nil) {
+			return false
+		}
+		if params.Before != nil {
+			var before *string
+			if json.Unmarshal(params.Before, &before) != nil || before == nil {
+				return false
+			}
+			in.historyBefore = *before
+		}
+	} else if d.Decode(in) != nil {
 		return false
 	}
 	var extra any
@@ -152,6 +173,10 @@ func (s *Service) handleAction(op string) gin.HandlerFunc {
 			finish(limited)
 			return
 		}
+		if op == "versions" && ((in.historyLimit != nil && (*in.historyLimit < 1 || *in.historyLimit > 200)) || !validHistoryCursor(in.historyBefore)) {
+			finish(denied(code.InvalidRequest))
+			return
+		}
 		if op == "trial" {
 			l, e := s.trials.Acquire(c.Request.Context(), app.ID, row.IP, in.Device)
 			if e != nil {
@@ -185,10 +210,19 @@ func (s *Service) handleAction(op string) gin.HandlerFunc {
 				finish(checked)
 				return
 			}
-			if op == "update.check" {
-				checked := s.process(c.Request.Context(), app, verify.Verify, row.IP, in, now, policyOptions{updating: true})
+			if op == "update.check" || op == "versions" {
+				checked := s.process(c.Request.Context(), app, verify.Verify, row.IP, in, now, policyOptions{updating: true, history: op == "versions"})
 				if checked.Code != code.OK {
 					finish(checked)
+					return
+				}
+				if op == "versions" {
+					data, err := s.versionHistory(c.Request.Context(), *checked.LicenseID, in.historyLimit, in.historyBefore, now)
+					if err != nil {
+						finish(updateFailure(err))
+						return
+					}
+					finish(outcome{Code: code.OK, Data: data, LicenseID: checked.LicenseID, ActivationID: checked.ActivationID})
 					return
 				}
 				var data map[string]any
@@ -247,10 +281,10 @@ func readAction(c *gin.Context, op string, row *model.VerifyLog) (Input, []byte,
 	if err != nil || len(body) > 65536 {
 		return in, nil, false, code.InvalidRequest
 	}
-	isPost := op == verify.Activate || op == verify.Verify || op == verify.Heartbeat || op == "deactivate" || op == "release-seat" || op == "update.check" || op == "payload.unlock"
+	isPost := op == verify.Activate || op == verify.Verify || op == verify.Heartbeat || op == "deactivate" || op == "release-seat" || op == "update.check" || op == "versions" || op == "payload.unlock"
 	if isPost || op == "trial" {
 		typ, _, err := mime.ParseMediaType(c.GetHeader("Content-Type"))
-		if err != nil || typ != "application/json" || !decode(body, &in) {
+		if err != nil || typ != "application/json" || !decode(body, op, &in) {
 			return in, nil, false, code.InvalidRequest
 		}
 		if challenge, err := base64.RawURLEncoding.Strict().DecodeString(in.Challenge); err != nil || len(challenge) != 32 {

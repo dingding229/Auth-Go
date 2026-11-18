@@ -128,6 +128,7 @@ response.c = B64U(GCM(response_key,新的随机12字节nonce,填充响应JSON,re
 | announcement | null | items，字段见 6.5；不改授权缓存 |
 | version | null | 最新 version 对象；无版本 VERSION_NOT_FOUND |
 | update.check | 共同正文 + 严格 SemVer current_version | available/version/changelog/mandatory/published_at/docker_image/docker_pull/maintenance_until/latest_entitled_version/renewal_required |
+| versions | 共同正文 + 可选 limit、before | items（已发布版本历史）、next_cursor；须有效激活，详见 6.3.1 |
 | trial | device_fingerprint、challenge | license_key、challenge、request_nonce，取得后普通激活 |
 | payload.unlock | 共同正文 + payload、ephemeral_public_key | e/n/c、watermark 和校验结果，见 8.6 |
 
@@ -135,7 +136,7 @@ response.c = B64U(GCM(response_key,新的随机12字节nonce,填充响应JSON,re
 - 常驻进程每次启动生成 16 随机字节 B64U（22 字符）instance_session，只存内存；activate/verify/heartbeat/release-seat 携带。PHP 请求式不发送，使用 token 会话租约。
 - 服务端在 KEY 载体/浮动记录保存当前 session，并按 rowid 保留每激活最近 32 个已见 session。新 session 经策略、到期、版本、容量检查后接管；历史内已替换 session 返回 INSTANCE_REPLACED，裁剪外不能保证识别。
 - 稳定浮动实例仍是规范指纹。租约到期按心跳竞争容量；正常 release-seat 事务删除实例与浮动代次引用并写 instance.release 审计，不另写验证日志；保留独立 KEY 锚点、token、缓存，不扩宽限。非浮动 released=false，Go 已知非浮动时不发请求。
-- 释放后列表不显示实例；未释放的超时实例保留为离线。合法心跳可重建，持有效会话和 KEY 证明的新 session 也可 Verify 重建，仍校验容量及历史；update.check/payload.unlock 不隐式占位。
+- 释放后列表不显示实例；未释放的超时实例保留为离线。合法心跳可重建，持有效会话和 KEY 证明的新 session 也可 Verify 重建，仍校验容量及历史；update.check/payload.unlock/versions 不隐式占位。
 - release-seat 成功/连接故障/临时错误不改缓存，明确拒绝按第 7 节；deactivate 撤销会话，不参与接管。七语言 VERSION_DISABLED 公开 latest_version，维护期错误公开 latest_entitled_version。
 
 ### 6.3 Docker Hub 更新与维护期
@@ -143,6 +144,19 @@ response.c = B64U(GCM(response_key,新的随机12字节nonce,填充响应JSON,re
 - 激活/校验/心跳依次判断授权、VERSION_DISABLED、MAINTENANCE_EXPIRED。上报版本发布时间严格晚于维护期才拒绝，相等放行；未上报/未收录/无发布时间放行，后两者采样记录。withdrawn 不影响运行版本判断，禁用不被同步覆盖。
 - 有维护期时，最高可用版本为发布时间不晚于维护期和当前时间、未禁用/撤回且在版本范围内的最高 SemVer；无结果为空，无维护期不计算。更新超期提示 renewal_required。SDK 不凭本地时间拒绝维护期，断网仍仅原签名宽限。
 - 发放/批量接受 maintenance_days 或 maintenance_until；POST `/api/v1/admin/licenses/{id}/maintenance` 修改；续期省略保留、不自动延长，0 天或 null 清除。
+
+### 6.3.1 持证客户端版本历史（versions）
+`versions` 是加密网关动作，不是免激活的 `version`。与 `update.check` 相同，需要有效授权码、激活 token、设备证明与 challenge，受相同 IP/授权限流、nonce 重放防护和验证日志约束；不会通过此操作占用/重建浮动席位，也不会写客户端授权缓存。返回按照 `published_at DESC, id DESC` 排序；仅本软件、发布时间不为空且不晚于服务端当前时间、未禁用且未撤回的版本。无记录返回空 `items` 而非 `VERSION_NOT_FOUND`。它不要求软件配置 Docker 镜像，历史条目不保证镜像可拉取。
+内层 `body` 示例（占位符不得当作真实凭据；HMAC、外层加密、响应解密与验签均按第 3–4 节，不能直接发明文）：
+```json
+{"license_key":"<授权码>","activation_token":"<激活令牌>","device_fingerprint":"<设备指纹>","challenge":"<32字节随机值的B64U>","client_version":"1.0.0","hostname":"host","os":"linux","limit":2,"before":"<上一页next_cursor，可省略>"}
+```
+`limit` 省略为 50，整数范围 1–200；分页字段不接受 `null`。`before` 省略或空串表示第一页，否则必须原样使用上一页 `next_cursor`（不超过 256 字节，base64url 无填充的不透明游标，包含排序时间和 ID，禁止自行构造或解读）。每页同时有大小上限，返回数量可能小于 `limit`；以非空 `next_cursor` 而非条数判断是否继续。新增发布或修改、撤回版本时分页不保证跨请求的快照一致性。
+完整成功响应解密后的示例（签名为占位符，`data.request_nonce` 及外层 `nonce` 均与本次请求绑定）：
+```json
+{"code":"OK","message":"验证成功","data":{"request_nonce":"<请求nonce>","items":[{"version":"1.2.0","changelog":"修复问题","published_at":"2026-11-18T00:00:00Z","mandatory":true,"entitled":false},{"version":"1.1.0","changelog":"初始发布","published_at":"2026-11-10T00:00:00Z","mandatory":false,"entitled":true}],"next_cursor":"<下一页游标或空字符串>"},"signature":"<Ed25519签名>","ts":1794960000,"nonce":"<请求nonce>"}
+```
+`mandatory` 与 `update.check` 一样采用版本记录的强制更新值；`entitled` 为授权维护期的发布时间判断：未设置维护期或发布时间不晚于维护期且版本为严格 SemVer 时为 true，晚于维护期或版本格式无效为 false。历史可以包含未获维护期权益的条目；此标记不授予下载或运行权限。`published_at` 返回 RFC3339 时间，`changelog` 是纯文本，展示时不得作为 HTML 执行。请求语法/游标/范围非法返回 `INVALID_REQUEST`；授权码/令牌无效分别可能为 `INVALID_LICENSE_KEY`、`LICENSE_NOT_FOUND`、`ACTIVATION_INVALID`，还可能返回 `LICENSE_NOT_STARTED`、`LICENSE_EXPIRED`、`LICENSE_REVOKED`、`LICENSE_SUSPENDED`、`USER_DISABLED`、`APP_DISABLED`、`LEASE_EXPIRED`、`INSTANCE_REPLACED`、`RATE_LIMITED`、`REPLAY_DETECTED` 或 `INTERNAL_ERROR`。认证失败前不得信任错误码。Go SDK 提供 `Client.Versions`；其余语言当前仅规定此 wire 格式，尚未实现此方法。
 
 ### 6.4 免授权码试用
 - trial 无授权码/token，但使用完整网关认证和响应挑战校验；授权码仅存内存及加密缓存 trial_key，不写日志。仅高层 Guard 在有配置且 AUTHGO_LICENSE 为空时申领/恢复，低层 Check 仍拒绝空码；无配置 SDK_INVALID_CONFIG，首次断网失败。

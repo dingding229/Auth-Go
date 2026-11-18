@@ -37,22 +37,23 @@ func (c *fakeClock) now() time.Time      { c.mu.Lock(); defer c.mu.Unlock(); ret
 func (c *fakeClock) add(d time.Duration) { c.mu.Lock(); c.at = c.at.Add(d); c.mu.Unlock() }
 
 type signedServer struct {
-	payloadResponse func(json.RawMessage, map[string]any) string
-	trial           bool
-	responseCode    string
-	gateway         *ecdh.PrivateKey
-	floatingGrace   *time.Duration
-	mu              sync.Mutex
-	server          *httptest.Server
-	pub             ed25519.PublicKey
-	private         ed25519.PrivateKey
-	clock           *fakeClock
-	mode            string
-	floating        bool
-	expires         *time.Time
-	counts          map[string]int
-	nonces          map[string]bool
-	last            []byte
+	versionsResponse func(json.RawMessage, map[string]any)
+	payloadResponse  func(json.RawMessage, map[string]any) string
+	trial            bool
+	responseCode     string
+	gateway          *ecdh.PrivateKey
+	floatingGrace    *time.Duration
+	mu               sync.Mutex
+	server           *httptest.Server
+	pub              ed25519.PublicKey
+	private          ed25519.PrivateKey
+	clock            *fakeClock
+	mode             string
+	floating         bool
+	expires          *time.Time
+	counts           map[string]int
+	nonces           map[string]bool
+	last             []byte
 }
 
 func newSignedServer(t *testing.T) *signedServer {
@@ -195,6 +196,10 @@ func (s *signedServer) handle(w http.ResponseWriter, r *http.Request) {
 		}
 		data["ticket"] = ticket
 		data["unlock_seed"] = wire.B64.EncodeToString(seed)
+	}
+	if op == "versions" && s.versionsResponse != nil {
+		data = map[string]any{"request_nonce": nonce}
+		s.versionsResponse(raw, data)
 	}
 	if op == "announcement" {
 		data = map[string]any{"request_nonce": data["request_nonce"], "items": []map[string]any{{"id": 1, "app_id": 1, "title": "中文公告", "content": "已发布", "created_at": now, "updated_at": now, "published_at": now, "expires_at": nil}}}

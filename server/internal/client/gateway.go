@@ -72,7 +72,7 @@ func (s *Service) Gateway(c *gin.Context) {
 		return
 	}
 	switch inner.Op {
-	case "activate", "verify", "heartbeat", "deactivate", "release-seat", "public-key", "announcement", "version", "update.check", "trial", "payload.unlock":
+	case "activate", "verify", "heartbeat", "deactivate", "release-seat", "public-key", "announcement", "version", "update.check", "versions", "trial", "payload.unlock":
 	default:
 		invalidInner()
 		return

@@ -1,0 +1,32 @@
+{
+  "canonical_signed": "{\"code\":\"OK\",\"data\":{\"items\":[{\"changelog\":\"示例 \\u003cnotes\\u003e\\n第二行\",\"entitled\":false,\"mandatory\":true,\"published_at\":\"2026-11-18T00:00:00Z\",\"version\":\"1.2.0\"},{\"changelog\":\"\",\"entitled\":true,\"mandatory\":false,\"published_at\":\"2026-11-10T00:00:00Z\",\"version\":\"1.1.0\"}],\"next_cursor\":\"eyJ0IjoiMjAyNi0xMS0xMFQwMDowMDowMFoiLCJpIjoxMH0\",\"request_nonce\":\"3d8904272785ef36d3d454b77d8bf606df8a3521b9c1a30a9244559d7155a61e_versions-vector-test-only\"},\"ts\":1794960000}",
+  "op": "versions",
+  "public_key": "fqPEES7PSbXe7BCSGqHRna/wbBN5/LAahYKj7BbldvI=",
+  "response": {
+    "code": "OK",
+    "data": {
+      "items": [
+        {
+          "changelog": "示例 <notes>\n第二行",
+          "entitled": false,
+          "mandatory": true,
+          "published_at": "2026-11-18T00:00:00Z",
+          "version": "1.2.0"
+        },
+        {
+          "changelog": "",
+          "entitled": true,
+          "mandatory": false,
+          "published_at": "2026-11-10T00:00:00Z",
+          "version": "1.1.0"
+        }
+      ],
+      "next_cursor": "eyJ0IjoiMjAyNi0xMS0xMFQwMDowMDowMFoiLCJpIjoxMH0",
+      "request_nonce": "3d8904272785ef36d3d454b77d8bf606df8a3521b9c1a30a9244559d7155a61e_versions-vector-test-only"
+    },
+    "message": "验证成功",
+    "nonce": "3d8904272785ef36d3d454b77d8bf606df8a3521b9c1a30a9244559d7155a61e_versions-vector-test-only",
+    "signature": "q1DDtzrDrHrZZkQUjMyxAeScf+cvoev8YUIyZg1EqsHmyOBJfsXbaQyl14CwkVAaEBU5u5Foor9GqEEkVEBdAA==",
+    "ts": 1794960000
+  }
+}

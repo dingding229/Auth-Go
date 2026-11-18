@@ -120,6 +120,8 @@ func (s *Service) privateKey(a model.Application) (ed25519.PrivateKey, error) {
 }
 
 type Input struct {
+	historyLimit       *int
+	historyBefore      string
 	Payload            json.RawMessage `json:"payload,omitempty"`
 	EphemeralPublicKey string          `json:"ephemeral_public_key,omitempty"`
 	InstanceSession    string          `json:"instance_session"`

@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-type policyOptions struct{ updating, unlocking bool }
+type policyOptions struct{ updating, unlocking, history bool }
 type policyRun struct {
 	service         *Service
 	tx              *gorm.DB
@@ -198,7 +198,7 @@ func (p *policyRun) evaluate() error {
 		p.decision = verify.Result{Errors: []string{code.LeaseExpired}}
 	}
 	if p.decision.Pass || len(p.decision.Errors) > 0 && (p.decision.Errors[0] == code.LeaseExpired || p.decision.Errors[0] == code.FloatingLimitReached || p.decision.Errors[0] == code.VersionDisabled || p.decision.Errors[0] == code.MaintenanceExpired || p.decision.Errors[0] == code.VersionNotAllowed) {
-		takeover := !p.options.unlocking && (p.op == verify.Activate || p.op == verify.Verify || p.op == verify.Heartbeat)
+		takeover := !p.options.unlocking && !p.options.history && (p.op == verify.Activate || p.op == verify.Verify || p.op == verify.Heartbeat)
 		instanceProblem, e := instanceCheck(p.tx, p.activations, p.session.ID, p.request.Device, p.input.InstanceSession, takeover)
 		if e != nil {
 			return e

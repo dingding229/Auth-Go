@@ -9484,7 +9484,8 @@ paths:
       description: |-
         v2 X25519/HKDF/AES-GCM外层；动作、HMAC、nonce和票据位于密文。业务拒绝也是200密文；解密/外层限流统一固定400。完整字节规范见server/internal/apidocs/protocol.md。
         instance：支持instance_session进程接管及release-seat释放浮动容量；INSTANCE_REPLACED明确拒绝但保留缓存，VERSION_DISABLED返回latest_version。
-        显式释放删除浮动实例后，新的instance_session可凭未撤销KEY会话锚点在普通verify中按容量重建；历史接管进程仍拒绝，update.check/payload.unlock不得据此隐式占位。
+        显式释放删除浮动实例后，新的instance_session可凭未撤销KEY会话锚点在普通verify中按容量重建；历史接管进程仍拒绝，update.check/payload.unlock/versions不得据此隐式占位。
+        versions：与update.check相同的有效授权和激活令牌；正文可带limit（1–200，默认50）及before不透明游标；返回items和next_cursor，格式详见接入协议6.3.1。
         payload.unlock内层body携带完整payload.json（含config）、ephemeral_public_key及现有授权/激活令牌/实例/challenge字段。严格按授权、席位、信封、版本、维护期的顺序检查；成功data含重封装e/n/c和is_trial，不返回明文内容密钥。信封失败PAYLOAD_INVALID不是授权拒绝，不清授权缓存。细节见接入协议12.6。
       requestBody:
         content:

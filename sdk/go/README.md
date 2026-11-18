@@ -24,7 +24,32 @@ result, err := client.Check(ctx, os.Getenv("AUTHGO_LICENSE"))
 
 ## Docker Hub 更新检查
 
-公开更新功能**仅**调用 `update.check`：返回 `available`、`docker_image`、`docker_pull`、`version`、`changelog`、`mandatory`、`published_at`，以及维护期、最新有权版本和续期提示。调用方显示镜像信息，由客户自行拉取和重建容器。没有 GitHub Releases/asset 下载、下载 URL、assets 列表、update.download 或二进制替换接口。更新检查无论成功或失败均不修改授权票据、缓存或 Refused；授权动作仍按原签名拒绝分类处理。保留版本禁用与维护期限制。
+Docker 更新检查调用 `update.check`：返回 `available`、`docker_image`、`docker_pull`、`version`、`changelog`、`mandatory`、`published_at`，以及维护期、最新有权版本和续期提示。调用方显示镜像信息，由客户自行拉取和重建容器。没有 GitHub Releases/asset 下载、下载 URL、assets 列表、update.download 或二进制替换接口。更新检查无论成功或失败均不修改授权票据、缓存或 Refused；授权动作仍按原签名拒绝分类处理。保留版本禁用与维护期限制。
+
+### 持证版本历史
+
+`Client.Versions` 与 `CheckUpdate` 一样需要已激活的在线授权，并验证网关加密、响应签名及 nonce；成功或失败不改变授权缓存。它列出已发布、未撤回、未禁用的版本，不依赖 Docker 镜像。`Entitled` 表示发布时间是否在维护期内，不能代替运行或下载授权。更新日志应按纯文本展示。
+
+```go
+cursor := ""
+for {
+    versions, next, err := client.Versions(ctx, sdk.VersionsOptions{Limit: 50, Before: cursor})
+    if err != nil {
+        return err
+    }
+    for _, version := range versions {
+        // 将 version.Version、version.Changelog、version.PublishedAt、
+        // version.Mandatory、version.Entitled 作为普通文本展示。
+        _ = version
+    }
+    if next == "" {
+        break
+    }
+    cursor = next
+}
+```
+
+`Limit` 为 0 使用默认 50，最大 200；分页可能因响应体大小提前结束，必须以 `next` 是否为空判断。游标是不透明的，直接传回，不保证列表跨请求为快照。其他 SDK 当前尚无此方法，wire 格式见服务端接入协议。`Guard` 目前没有 `CheckUpdate` 等价便捷方法；需版本历史的程序使用已激活的 `Client`。
 
 ### Linux 物理指纹归一化
 
