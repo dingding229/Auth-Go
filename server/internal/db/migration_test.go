@@ -41,13 +41,13 @@ func baselineDatabase(t *testing.T) *gorm.DB {
 	if strings.Count(initialSchema, column) != 1 {
 		t.Fatal("cannot derive the released baseline schema")
 	}
-	if err := d.Exec(strings.NewReplacer(column, "", "  template_id integer REFERENCES feature_templates(id) ON DELETE SET NULL,\n", "", "CREATE INDEX idx_licenses_template_id ON licenses(template_id);\n", "").Replace(initialSchema)).Error; err != nil {
+	if err := d.Exec(strings.NewReplacer(column, "", "  architectures text NOT NULL DEFAULT '',\n", "", "  template_id integer REFERENCES feature_templates(id) ON DELETE SET NULL,\n", "", "CREATE INDEX idx_licenses_template_id ON licenses(template_id);\n", "").Replace(initialSchema)).Error; err != nil {
 		t.Fatal(err)
 	}
 	if err := d.Create(&model.SchemaMigration{Version: 1, Name: BaselineName, AppliedAt: time.Date(2026, 11, 10, 0, 0, 0, 0, time.UTC)}).Error; err != nil {
 		t.Fatal(err)
 	}
-	if d.Migrator().HasColumn(&model.AppVersion{}, "build_verified") || d.Migrator().HasColumn(&model.License{}, "template_id") {
+	if d.Migrator().HasColumn(&model.AppVersion{}, "architectures") || d.Migrator().HasColumn(&model.AppVersion{}, "build_verified") || d.Migrator().HasColumn(&model.License{}, "template_id") {
 		t.Fatal("baseline already contains a new column")
 	}
 	return d
@@ -110,7 +110,7 @@ func TestBaselineUpgradePreservesDataAndIsIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	after := migrationRecords(t, d)
-	if len(after) != 3 || after[0] != before[0] || after[1].Version != 2 || after[1].Name != "authgo_1_0_3_build_verified" || after[2].Version != 3 || after[2].Name != "authgo_1_0_3_license_template" {
+	if len(after) != 4 || after[0] != before[0] || after[1].Version != 2 || after[1].Name != "authgo_1_0_3_build_verified" || after[2].Version != 3 || after[2].Name != "authgo_1_0_3_license_template" || after[3].Version != 4 || after[3].Name != "authgo_1_0_6_version_architectures" {
 		t.Fatal("incorrect upgrade history", after)
 	}
 	if !d.Migrator().HasColumn(&model.AppVersion{}, "build_verified") || !d.Migrator().HasColumn(&model.License{}, "template_id") {
@@ -182,11 +182,11 @@ func TestInvalidMigrationHistoryIsRejectedWithoutWrites(t *testing.T) {
 		{"empty-history", "DELETE FROM schema_migrations"},
 		{"missing-baseline", "UPDATE schema_migrations SET version=2,name='authgo_1_0_3_build_verified'"},
 		{"wrong-baseline-name", "UPDATE schema_migrations SET name='other'"},
-		{"unknown-version", "INSERT INTO schema_migrations VALUES (4,'unknown',CURRENT_TIMESTAMP)"},
+		{"unknown-version", "INSERT INTO schema_migrations VALUES (5,'unknown',CURRENT_TIMESTAMP)"},
 		{"wrong-migration-name", "INSERT INTO schema_migrations VALUES (2,'other',CURRENT_TIMESTAMP)"},
 		{"wrong-third-name", "INSERT INTO schema_migrations VALUES (2,'authgo_1_0_3_build_verified',CURRENT_TIMESTAMP),(3,'other',CURRENT_TIMESTAMP)"},
 		{"missing-second", "INSERT INTO schema_migrations VALUES (3,'authgo_1_0_3_license_template',CURRENT_TIMESTAMP)"},
-		{"unknown-after-current", "INSERT INTO schema_migrations VALUES (2,'authgo_1_0_3_build_verified',CURRENT_TIMESTAMP),(3,'authgo_1_0_3_license_template',CURRENT_TIMESTAMP),(4,'unknown',CURRENT_TIMESTAMP)"},
+		{"unknown-after-current", "INSERT INTO schema_migrations VALUES (2,'authgo_1_0_3_build_verified',CURRENT_TIMESTAMP),(3,'authgo_1_0_3_license_template',CURRENT_TIMESTAMP),(4,'authgo_1_0_6_version_architectures',CURRENT_TIMESTAMP),(5,'unknown',CURRENT_TIMESTAMP)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			d := baselineDatabase(t)
@@ -308,7 +308,7 @@ func TestLegacyZIPRestoreAcceptsBaselineAndUpgrades(t *testing.T) {
 	if err := Migrate(loaded); err != nil {
 		t.Fatal(err)
 	}
-	if len(migrationRecords(t, loaded)) != 3 {
+	if len(migrationRecords(t, loaded)) != 4 {
 		t.Fatal("restored backup not upgraded")
 	}
 	assertLegacyVersion(t, loaded)
@@ -332,8 +332,8 @@ func TestSecondMigrationUpgradesToLicenseTemplate(t *testing.T) {
 	if err := Migrate(d); err != nil {
 		t.Fatal(err)
 	}
-	if len(migrationRecords(t, d)) != 3 {
-		t.Fatal("third migration not recorded")
+	if len(migrationRecords(t, d)) != 4 {
+		t.Fatal("not all migrations were recorded")
 	}
 	assertLegacyVersion(t, d)
 	source := model.FeatureTemplate{AppID: 7, Name: "source", Features: model.JSONMap{}}
@@ -347,4 +347,39 @@ func TestSecondMigrationUpgradesToLicenseTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertLegacyVersion(t, d)
+}
+
+func TestVersionArchitecturesMigrationFromVersionThree(t *testing.T) {
+	d := baselineDatabase(t)
+	seedLegacyVersion(t, d)
+	for n := 2; n <= 3; n++ {
+		m := migrations[n-1]
+		if err := d.Exec(m.sql).Error; err != nil {
+			t.Fatal(err)
+		}
+		if err := d.Create(&model.SchemaMigration{Version: n, Name: m.name, AppliedAt: time.Now().UTC()}).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	if d.Migrator().HasColumn(&model.AppVersion{}, "architectures") {
+		t.Fatal("previous schema already has architectures")
+	}
+	if err := Migrate(d); err != nil {
+		t.Fatal(err)
+	}
+	if rows := migrationRecords(t, d); len(rows) != 4 || rows[3].Version != 4 || rows[3].Name != "authgo_1_0_6_version_architectures" {
+		t.Fatal(rows)
+	}
+	assertLegacyVersion(t, d)
+	// Check the SQL default as well as the backfilled value, without GORM defaults.
+	if err := d.Exec("INSERT INTO app_versions(app_id,version) VALUES (7,'2.0.0')").Error; err != nil {
+		t.Fatal(err)
+	}
+	var values []string
+	if err := d.Raw("SELECT architectures FROM app_versions ORDER BY id").Scan(&values).Error; err != nil || !reflect.DeepEqual(values, []string{"", ""}) {
+		t.Fatal(values, err)
+	}
+	if err := d.Exec("UPDATE app_versions SET architectures=NULL WHERE id=9").Error; err == nil {
+		t.Fatal("architectures accepted NULL")
+	}
 }

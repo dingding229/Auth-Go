@@ -127,6 +127,8 @@ func (s *Service) DeleteAnnouncement(ctx context.Context, id uint64) error {
 }
 
 type VersionInfo struct {
+	// Docker Hub 镜像架构，仅由同步写入。
+	Architectures     []string   `json:"architectures" readonly:"true"`
 	BuildVerified     bool       `json:"build_verified"`
 	Encrypted         bool       `json:"encrypted"`
 	BuiltAt           *time.Time `json:"built_at"`
@@ -143,7 +145,11 @@ type VersionInfo struct {
 }
 
 func VersionDTO(v model.AppVersion) VersionInfo {
-	return VersionInfo{v.BuildVerified, v.Encrypted, v.BuiltAt, v.Disabled, v.Source, v.Withdrawn, v.MandatoryOverride, baseInfo(v.Base), v.AppID, v.Version, v.Changelog, v.Mandatory, v.PublishedAt}
+	architectures := []string{}
+	if v.Architectures != "" {
+		architectures = strings.Split(v.Architectures, ",")
+	}
+	return VersionInfo{architectures, v.BuildVerified, v.Encrypted, v.BuiltAt, v.Disabled, v.Source, v.Withdrawn, v.MandatoryOverride, baseInfo(v.Base), v.AppID, v.Version, v.Changelog, v.Mandatory, v.PublishedAt}
 }
 
 type VersionInput struct {
@@ -154,6 +160,10 @@ type VersionInput struct {
 	Changelog   *string         `json:"changelog"`
 	Mandatory   *bool           `json:"mandatory"`
 	PublishedAt json.RawMessage `json:"published_at" swaggertype:"string" format:"date-time"`
+}
+
+func (in VersionInput) Empty() bool {
+	return in.Encrypted == nil && len(in.BuiltAt) == 0 && in.Disabled == nil && in.Version == nil && in.Changelog == nil && in.Mandatory == nil && len(in.PublishedAt) == 0
 }
 
 func applyVersion(v model.AppVersion, in VersionInput) (model.AppVersion, error) {
@@ -229,7 +239,7 @@ func (s *Service) CreateVersion(ctx context.Context, appID uint64, in VersionInp
 	return VersionDTO(v), versionDuplicate(e)
 }
 func (s *Service) UpdateVersion(ctx context.Context, id uint64, in VersionInput) (VersionInfo, error) {
-	if in.Encrypted == nil && len(in.BuiltAt) == 0 && in.Disabled == nil && in.Version == nil && in.Changelog == nil && in.Mandatory == nil && len(in.PublishedAt) == 0 {
+	if in.Empty() {
 		return VersionInfo{}, apperror.Invalid("至少提供一个修改字段")
 	}
 	var v model.AppVersion

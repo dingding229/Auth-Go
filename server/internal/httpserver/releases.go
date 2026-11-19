@@ -5,6 +5,7 @@ import (
 	"authgo/internal/catalog"
 	"authgo/internal/middleware"
 	"authgo/internal/response"
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 )
 
@@ -48,8 +49,19 @@ func registerReleases(r *gin.Engine, service *catalog.Service, identity *auth.Se
 	root.GET("/versions/:id", withID(func(c *gin.Context, id uint64) (any, error) {
 		return service.GetVersion(c.Request.Context(), id)
 	}))
-	root.PATCH("/versions/:id", middleware.Action("version.update", "app_version"), withIDBody(func(c *gin.Context, id uint64, in catalog.VersionInput) (any, error) {
-		return service.UpdateVersion(c.Request.Context(), id, in)
+	root.PATCH("/versions/:id", middleware.Action("version.update", "app_version"), withID(func(c *gin.Context, id uint64) (any, error) {
+		var in struct {
+			catalog.VersionInput
+			IgnoredArchitectures json.RawMessage `json:"architectures"`
+		}
+		if err := response.BindJSON(c, &in); err != nil {
+			return nil, err
+		}
+		ctx := c.Request.Context()
+		if len(in.IgnoredArchitectures) != 0 && in.VersionInput.Empty() {
+			return service.GetVersion(ctx, id)
+		}
+		return service.UpdateVersion(ctx, id, in.VersionInput)
 	}))
 	root.DELETE("/versions/:id", middleware.Action("version.delete", "app_version"), withID(func(c *gin.Context, id uint64) (any, error) {
 		return gin.H{}, service.DeleteVersion(c.Request.Context(), id)

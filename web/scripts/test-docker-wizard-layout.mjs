@@ -47,7 +47,7 @@ const dockerDoc = await readFile(
 );
 const results = [];
 try {
-  for (const width of [1440, 375, 320]) {
+  for (const width of [1440, 1024, 375, 320]) {
     const context = await browser.newContext({
       viewport: { width, height: 1000 },
     });
@@ -137,6 +137,7 @@ try {
               disabled: false,
               source: "docker",
               asset_count: 0,
+              architectures: ["amd64", "arm/v7", "arm64", "windows/amd64"],
             },
           ],
           total: 1,
@@ -266,7 +267,32 @@ try {
       .locator(".el-switch:visible")
       .filter({ has: page.locator('input[aria-label="禁用版本1.0.0"]') })
       .waitFor();
-    await fits("版本禁用");
+    const versions = page
+      .getByRole("heading", { name: "已发布版本", exact: true })
+      .locator("xpath=../..");
+    await versions
+      .locator(".version-architectures .el-tag:visible")
+      .filter({ hasText: /^windows\/amd64$/ })
+      .waitFor();
+    assert.equal(
+      await versions
+        .getByRole("button", { name: "禁用版本", exact: true })
+        .count(),
+      0,
+    );
+    if (width === 1024) {
+      const box = await versions
+        .locator(".table-scroll .el-scrollbar__wrap")
+        .evaluate((el) => ({
+          available: el.clientWidth,
+          used: el.scrollWidth,
+        }));
+      assert.ok(
+        box.available > 0 && box.used <= box.available,
+        `1024/已发布版本: ${JSON.stringify(box)}`,
+      );
+    }
+    await fits("已发布版本");
     await page.goto(origin + "/portal/license");
     await page
       .getByText("docker pull example-org/example-app:v1.2.3", { exact: true })

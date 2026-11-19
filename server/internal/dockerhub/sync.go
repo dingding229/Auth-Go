@@ -136,12 +136,15 @@ func (s *Service) sync(ctx context.Context, id uint64) error {
 				return err
 			}
 			if old.ID == 0 {
-				v := model.AppVersion{AppID: id, Version: version, Source: "docker", PublishedAt: &r.Published}
+				v := model.AppVersion{AppID: id, Version: version, Source: "docker", PublishedAt: &r.Published, Architectures: r.Architectures}
 				if err := tx.Create(&v).Error; err != nil {
 					return err
 				}
 			} else {
 				values := map[string]any{}
+				if r.Architectures != "" && old.Architectures != r.Architectures {
+					values["architectures"] = r.Architectures
+				}
 				if old.PublishedAt == nil {
 					values["published_at"] = r.Published
 				}

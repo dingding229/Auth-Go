@@ -551,6 +551,7 @@ func PatchAdminAnnouncementsId() {}
 func DeleteAdminAnnouncementsId() {}
 
 // @Summary 软件 GET /applications/:id/versions
+// @Description architectures 是 Docker Hub 同步采集的只读镜像架构数组，无数据时返回空数组。
 // @Tags 软件
 // @Produce json
 // @Security AdminBearer
@@ -560,7 +561,7 @@ func DeleteAdminAnnouncementsId() {}
 // @Param page query integer false "page；规则见接口契约"
 // @Param page_size query integer false "page_size；规则见接口契约"
 // @Param sort_by query string false "排序字段；允许值见接口契约"
-// @Success 200 {object} Envelope
+// @Success 200 {object} VersionListResponse
 // @Failure 400,401,403,404,409,429,500 {object} Envelope
 // @Router /api/v1/admin/applications/{id}/versions [get]
 func GetAdminApplicationsIdVersions() {}
@@ -589,6 +590,7 @@ func GetAdminVersionsId() {}
 
 // @Description disabled独立于withdrawn；禁用后已上报该版本的授权校验返回VERSION_DISABLED及latest_version，旧版本仍可检查更新。
 // @Description build_verified 为 true 时忽略 encrypted 和 built_at 的修改；其他字段照常更新。
+// @Description architectures 由 Docker Hub 同步维护，更新请求中的该字段会被忽略。
 // @Summary 版本 PATCH /versions/:id
 // @Tags 版本
 // @Produce json
@@ -1849,6 +1851,15 @@ type ApplicationInfoResponse struct {
 type LicenseListResponse struct {
 	Envelope
 	Data LicenseList `json:"data"`
+}
+type VersionListResponse struct {
+	Envelope
+	Data struct {
+		Items    []catalog.VersionInfo `json:"items"`
+		Total    int64                 `json:"total"`
+		Page     int                   `json:"page"`
+		PageSize int                   `json:"page_size"`
+	} `json:"data"`
 }
 type VersionInfoResponse struct {
 	Envelope

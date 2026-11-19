@@ -163,8 +163,9 @@ type Announcement struct {
 }
 
 type AppVersion struct {
-	BuildVerified     bool `gorm:"not null;default:false"`
-	Encrypted         bool `gorm:"not null;default:false"`
+	Architectures     string `gorm:"not null;default:''"`
+	BuildVerified     bool   `gorm:"not null;default:false"`
+	Encrypted         bool   `gorm:"not null;default:false"`
 	BuiltAt           *time.Time
 	Disabled          bool   `gorm:"not null;default:false"`
 	Source            string `gorm:"not null;default:manual"`

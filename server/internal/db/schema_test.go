@@ -21,7 +21,7 @@ func TestBaselineIsAtomicAndIdempotent(t *testing.T) {
 		t.Fatal(e)
 	}
 	var versions []model.SchemaMigration
-	if e = d.Order("version ASC").Find(&versions).Error; e != nil || len(versions) != 3 || versions[0].Version != 1 || versions[0].Name != BaselineName || versions[1].Version != 2 || versions[1].Name != "authgo_1_0_3_build_verified" || versions[2].Version != 3 || versions[2].Name != "authgo_1_0_3_license_template" {
+	if e = d.Order("version ASC").Find(&versions).Error; e != nil || len(versions) != 4 || versions[0].Version != 1 || versions[0].Name != BaselineName || versions[1].Version != 2 || versions[1].Name != "authgo_1_0_3_build_verified" || versions[2].Version != 3 || versions[2].Name != "authgo_1_0_3_license_template" || versions[3].Version != 4 || versions[3].Name != "authgo_1_0_6_version_architectures" {
 		t.Fatal(versions, e)
 	}
 	for _, table := range []string{"admins", "end_users", "licenses", "activations", "gateway_keys", "payload_keys", "docker_hub_sync_states", "feature_templates", "license_sharing", "trial_claims", "activation_instance_sessions", "publishing_credentials", "application_publishing"} {

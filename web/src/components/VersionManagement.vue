@@ -83,15 +83,34 @@ async function save() {
         }))
       "
       :loading="list.loading.value"
-      :actions-width="220"
+      :actions-width="120"
       :columns="[
-        { key: 'version', title: '版本' },
-        { key: 'source_label', title: '来源' },
-        { key: 'encrypted', title: '代码加密' },
-        { key: 'built_at', title: '构建时间', date: true },
-        { key: 'disabled', title: '禁用' },
+        { key: 'version', title: '版本', width: 84 },
+        { key: 'source_label', title: '来源', width: 90 },
+        { key: 'architectures', title: '架构', width: 136 },
+        { key: 'encrypted', title: '代码加密', width: 112 },
+        { key: 'built_at', title: '构建时间', date: true, width: 112 },
+        { key: 'disabled', title: '禁用', width: 64 },
       ]"
     >
+      <template #cell-architectures="{ row }">
+        <span
+          v-if="Array.isArray(row.architectures) && row.architectures.length"
+          class="version-architectures"
+        >
+          <el-tag
+            v-for="arch in row.architectures"
+            :key="arch"
+            class="version-architecture"
+            size="small"
+          >
+            {{ arch }}
+          </el-tag>
+        </span>
+        <span v-else>
+          —
+        </span>
+      </template>
       <template #cell-encrypted="{ row }">
         {{ row.encrypted ? "是" : "否" }}
         <el-tag v-if="row.build_verified" type="success" size="small">
@@ -112,12 +131,6 @@ async function save() {
           @click="edit(row)"
         >
           构建元数据
-        </el-button>
-        <el-button
-          :disabled="task.busy.value || saveTask.busy.value"
-          @click="disable(row)"
-        >
-          {{ row.disabled ? "启用版本" : "禁用版本" }}
         </el-button>
       </template>
     </data-table>
@@ -157,3 +170,17 @@ async function save() {
     </focus-overlay>
   </section-panel>
 </template>
+
+<style scoped>
+.version-architectures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.version-architecture {
+  max-width: 100%;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+</style>

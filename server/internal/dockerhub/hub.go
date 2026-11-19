@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -20,10 +21,17 @@ const maxPages = 10
 
 var tagPattern = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+$`)
 
+type tagImage struct {
+	Architecture string `json:"architecture"`
+	OS           string `json:"os"`
+	Variant      string `json:"variant"`
+}
+
 type tag struct {
-	Name    string  `json:"name"`
-	Pushed  *string `json:"tag_last_pushed"`
-	Updated *string `json:"last_updated"`
+	Images  []tagImage `json:"images"`
+	Name    string     `json:"name"`
+	Pushed  *string    `json:"tag_last_pushed"`
+	Updated *string    `json:"last_updated"`
 }
 type page struct {
 	Count   int64   `json:"count"`
@@ -31,8 +39,9 @@ type page struct {
 	Results []tag   `json:"results"`
 }
 type release struct {
-	Tag       string
-	Published time.Time
+	Architectures string
+	Tag           string
+	Published     time.Time
 }
 type snapshot struct {
 	versions          map[string]release
@@ -107,6 +116,31 @@ func accepted(t tag) (string, time.Time, bool) {
 
 	return "", time.Time{}, false
 }
+func mergeArchitectures(existing string, images []tagImage) string {
+	if len(images) == 0 {
+		return existing
+	}
+	var platforms []string
+	if existing != "" {
+		platforms = strings.Split(existing, ",")
+	}
+	for _, image := range images {
+		platform := image.Architecture
+		if platform == "" || platform == "unknown" {
+			continue
+		}
+		if image.Variant != "" {
+			platform += "/" + image.Variant
+		}
+		if image.OS != "" && image.OS != "linux" {
+			platform = image.OS + "/" + platform
+		}
+		platforms = append(platforms, platform)
+	}
+	slices.Sort(platforms)
+	return strings.Join(slices.Compact(platforms), ",")
+}
+
 func (s *Service) read(ctx context.Context, image string, firstOnly bool) (snapshot, *hubFailure) {
 	out := snapshot{versions: map[string]release{}, present: map[string]string{}}
 	parts := strings.Split(image, "/")
@@ -168,18 +202,15 @@ func (s *Service) read(ctx context.Context, image string, firstOnly bool) (snaps
 				continue
 			}
 			out.accepted++
-			old, exists := out.versions[name]
-			if !exists {
-				out.versions[name] = release{t.Name, at}
-			} else {
-				if at.Before(old.Published) {
-					old.Published = at
-				}
-				if t.Name == name {
-					old.Tag = t.Name
-				}
-				out.versions[name] = old
+			r, exists := out.versions[name]
+			if !exists || at.Before(r.Published) {
+				r.Published = at
 			}
+			if !exists || t.Name == name {
+				r.Tag = t.Name
+			}
+			r.Architectures = mergeArchitectures(r.Architectures, t.Images)
+			out.versions[name] = r
 		}
 		// The 'next' URL is only a continuation flag. Never use it as a destination.
 		if p.Next == nil || *p.Next == "" {

@@ -68,6 +68,7 @@ var migrations = []struct{ name, sql string }{
 	{BaselineName, initialSchema},
 	{"authgo_1_0_3_build_verified", "ALTER TABLE app_versions ADD COLUMN build_verified integer NOT NULL DEFAULT 0 CHECK(build_verified IN (0,1))"},
 	{"authgo_1_0_3_license_template", "ALTER TABLE licenses ADD COLUMN template_id integer REFERENCES feature_templates(id) ON DELETE SET NULL; CREATE INDEX idx_licenses_template_id ON licenses(template_id)"},
+	{"authgo_1_0_6_version_architectures", "ALTER TABLE app_versions ADD COLUMN architectures text NOT NULL DEFAULT ''"},
 }
 
 // CheckSchema accepts an empty database or an ordered prefix of known migrations.

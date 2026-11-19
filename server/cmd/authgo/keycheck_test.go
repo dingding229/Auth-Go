@@ -41,7 +41,7 @@ func wrongMasterKeyStopsBeforeWriteOrListen(t *testing.T, legacy bool) {
 		if e = d.Exec("DROP INDEX idx_licenses_template_id; ALTER TABLE licenses DROP COLUMN template_id").Error; e != nil {
 			t.Fatal(e)
 		}
-		if e = d.Exec("ALTER TABLE app_versions DROP COLUMN build_verified").Error; e != nil {
+		if e = d.Exec("ALTER TABLE app_versions DROP COLUMN architectures; ALTER TABLE app_versions DROP COLUMN build_verified").Error; e != nil {
 			t.Fatal(e)
 		}
 		if e = d.Exec("DELETE FROM schema_migrations WHERE version>1").Error; e != nil {
@@ -52,7 +52,7 @@ func wrongMasterKeyStopsBeforeWriteOrListen(t *testing.T, legacy bool) {
 	if e = d.Order("version ASC").Find(&before).Error; e != nil {
 		t.Fatal(e)
 	}
-	want := 3
+	want := 4
 	if legacy {
 		want = 1
 	}
@@ -104,7 +104,7 @@ func wrongMasterKeyStopsBeforeWriteOrListen(t *testing.T, legacy bool) {
 	if e = d.Order("version ASC").Find(&after).Error; e != nil {
 		t.Fatal(e)
 	}
-	if !reflect.DeepEqual(before, after) || d.Migrator().HasColumn(&model.AppVersion{}, "build_verified") == legacy || d.Migrator().HasColumn(&model.License{}, "template_id") == legacy {
+	if !reflect.DeepEqual(before, after) || d.Migrator().HasColumn(&model.AppVersion{}, "architectures") == legacy || d.Migrator().HasColumn(&model.AppVersion{}, "build_verified") == legacy || d.Migrator().HasColumn(&model.License{}, "template_id") == legacy {
 		t.Fatal("database migrated during failed key validation", before, after)
 	}
 }

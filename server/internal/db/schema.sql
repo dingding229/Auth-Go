@@ -1,4 +1,4 @@
--- Initial schema for Auth Go 1.0.0.
+-- Current schema for new Auth Go databases.
 
 CREATE TABLE activation_instance_sessions (activation_id integer NOT NULL REFERENCES activations(id) ON DELETE CASCADE,
   session text NOT NULL,
@@ -69,6 +69,7 @@ CREATE TABLE `app_versions` (`id` integer PRIMARY KEY AUTOINCREMENT,
   encrypted integer NOT NULL DEFAULT 0 CHECK(encrypted IN (0,1)),
   built_at datetime,
   build_verified integer NOT NULL DEFAULT 0 CHECK(build_verified IN (0,1)),
+  architectures text NOT NULL DEFAULT '',
   CONSTRAINT `fk_app_versions_application` FOREIGN KEY (`app_id`) REFERENCES `applications`(`id`) ON DELETE RESTRICT);
 
 CREATE TABLE "applications" (`id` integer PRIMARY KEY AUTOINCREMENT,

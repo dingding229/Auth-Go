@@ -324,8 +324,9 @@ it("Docker Hub版本可确认禁用和重新启用，刷新后列表状态与服
     "版本禁用",
     expect.objectContaining({ confirmButtonText: "禁用版本" }),
   );
-  [...root.querySelectorAll<HTMLButtonElement>("button")]
-    .find((button) => button.textContent?.trim() === "启用版本")!
+  control("启用")!
+    .closest(".el-switch")!
+    .querySelector<HTMLElement>(".el-switch__core")!
     .click();
   await vi.waitFor(() =>
     expect(control("禁用")?.getAttribute("aria-checked")).toBe("false"),
@@ -339,4 +340,64 @@ it("Docker Hub版本可确认禁用和重新启用，刷新后列表状态与服
   expect(root.querySelector(".el-table__body-wrapper")?.textContent).toContain(
     "Docker Hub",
   );
+});
+
+it("已发布版本显示架构标签，空数组显示占位且操作列只留构建元数据", async () => {
+  http.defaults.adapter = async (config) => ({
+    config,
+    status: 200,
+    statusText: "OK",
+    headers: new AxiosHeaders(),
+    data: {
+      code: "OK",
+      data: {
+        items: [
+          {
+            id: 1,
+            version: "1.2.3",
+            source: "docker",
+            architectures: ["amd64", "arm/v7", "windows/amd64"],
+          },
+          {
+            id: 2,
+            version: "2.0.0",
+            source: "manual",
+            architectures: [],
+            disabled: true,
+          },
+        ],
+        total: 2,
+      },
+    },
+  });
+  await mount(RepositoryVersions, { id: "7", appKey: "app" });
+  const table = await vi.waitFor(() => {
+    const el = root.querySelector(".table-scroll");
+    expect(el?.querySelectorAll(".el-table__body tbody tr")).toHaveLength(2);
+    return el!;
+  });
+  const headers = [...table.querySelectorAll(".el-table__header th")].map(
+    (th) => th.textContent?.trim(),
+  );
+  const index = headers.indexOf("架构");
+  expect(index).toBeGreaterThan(0);
+  expect(headers[index + 1]).toBe("代码加密");
+  const [docker, manual] = [
+    ...table.querySelectorAll<HTMLTableRowElement>(".el-table__body tbody tr"),
+  ];
+  expect(
+    [...docker!.cells[index]!.querySelectorAll(".el-tag.el-tag--small")].map(
+      (tag) => tag.textContent?.trim(),
+    ),
+  ).toEqual(["amd64", "arm/v7", "windows/amd64"]);
+  expect(manual!.cells[index]!.textContent?.trim()).toBe("—");
+  expect(manual!.cells[index]!.querySelector(".el-tag")).toBeNull();
+  for (const row of [docker!, manual!]) {
+    expect(
+      [...row.cells[headers.indexOf("操作")]!.querySelectorAll("button")].map(
+        (button) => button.textContent?.trim(),
+      ),
+    ).toEqual(["构建元数据"]);
+    expect(row.querySelector('[role="switch"]')).not.toBeNull();
+  }
 });

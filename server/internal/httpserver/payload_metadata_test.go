@@ -4,6 +4,7 @@ import (
 	"authgo/internal/model"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"reflect"
 	"testing"
 )
 
@@ -53,4 +54,37 @@ func TestConfirmedVersionMetadataHTTP(t *testing.T) {
 	if v["build_verified"] != true {
 		t.Fatal("GET omitted confirmation", v)
 	}
+}
+
+func TestVersionArchitecturesAreReadOnly(t *testing.T) {
+	f := newCatalogFixture(t)
+	token := f.login(t, "owner", "initial-password")["access_token"].(string)
+	app := data(f.request(t, "POST", "/applications", token, gin.H{"name": "软件架构"}, 200))
+	path := idPath("/applications", app["id"]) + "/versions"
+	manual := data(f.request(t, "POST", path, token, gin.H{"version": "1.0.0"}, 200))
+	f.request(t, "POST", path, token, gin.H{"version": "3.0.0", "architectures": []string{"s390x"}}, 400)
+	version := data(f.request(t, "POST", path, token, gin.H{"version": "2.0.0"}, 200))
+	if err := f.db.Model(&model.AppVersion{}).Where("id=?", version["id"]).Update("architectures", "amd64,arm/v7").Error; err != nil {
+		t.Fatal(err)
+	}
+	items := data(f.request(t, "GET", path+"?sort_by=id&sort_order=asc", token, nil, 200))["items"].([]any)
+	if len(items) != 2 {
+		t.Fatal(items)
+	}
+	first, second := items[0].(map[string]any), items[1].(map[string]any)
+	if first["id"] != manual["id"] || !reflect.DeepEqual(first["architectures"], []any{}) || !reflect.DeepEqual(second["architectures"], []any{"amd64", "arm/v7"}) {
+		t.Fatal(items)
+	}
+	id := idPath("/versions", version["id"])
+	updated := data(f.request(t, "PATCH", id, token, gin.H{"architectures": []string{"s390x"}, "changelog": "变更说明"}, 200))
+	if updated["changelog"] != "变更说明" || !reflect.DeepEqual(updated["architectures"], second["architectures"]) {
+		t.Fatal(updated)
+	}
+	stored := data(f.request(t, "GET", id, token, nil, 200))
+	unchanged := data(f.request(t, "PATCH", id, token, gin.H{"architectures": nil}, 200))
+	if !reflect.DeepEqual(unchanged, stored) {
+		t.Fatal("read-only PATCH changed the version", unchanged, stored)
+	}
+	f.request(t, "PATCH", id, token, gin.H{"architectures": []string{}, "unknown_field": true}, 400)
+	f.request(t, "PATCH", id, token, gin.H{}, 400)
 }

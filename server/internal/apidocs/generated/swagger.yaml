@@ -1063,6 +1063,34 @@ components:
         ts:
           type: integer
       type: object
+    apidocs.VersionListResponse:
+      properties:
+        code:
+          example: OK
+          type: string
+        data:
+          properties:
+            items:
+              items:
+                $ref: '#/components/schemas/catalog.VersionInfo'
+              type: array
+              uniqueItems: false
+            page:
+              type: integer
+            page_size:
+              type: integer
+            total:
+              type: integer
+          type: object
+        message:
+          example: 操作成功
+          type: string
+        nonce:
+          type: string
+        signature: {}
+        ts:
+          type: integer
+      type: object
     apidocs.WatermarkTagList:
       properties:
         items:
@@ -1327,6 +1355,13 @@ components:
       properties:
         app_id:
           type: integer
+        architectures:
+          description: Docker Hub 镜像架构，仅由同步写入。
+          items:
+            type: string
+          readOnly: true
+          type: array
+          uniqueItems: false
         build_verified:
           type: boolean
         built_at:
@@ -2391,6 +2426,7 @@ info:
   description: |-
     disabled独立于withdrawn；禁用后已上报该版本的授权校验返回VERSION_DISABLED及latest_version，旧版本仍可检查更新。
     build_verified 为 true 时忽略 encrypted 和 built_at 的修改；其他字段照常更新。
+    architectures 由 Docker Hub 同步维护，更新请求中的该字段会被忽略。
   title: Auth Go API
   version: 1.0.0
 openapi: 3.1.0
@@ -4850,6 +4886,7 @@ paths:
       - 试用
   /api/v1/admin/applications/{id}/versions:
     get:
+      description: architectures 是 Docker Hub 同步采集的只读镜像架构数组，无数据时返回空数组。
       parameters:
       - description: id
         in: path
@@ -4887,7 +4924,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/apidocs.Envelope'
+                $ref: '#/components/schemas/apidocs.VersionListResponse'
           description: OK
         "400":
           content:
@@ -9409,6 +9446,7 @@ paths:
       description: |-
         disabled独立于withdrawn；禁用后已上报该版本的授权校验返回VERSION_DISABLED及latest_version，旧版本仍可检查更新。
         build_verified 为 true 时忽略 encrypted 和 built_at 的修改；其他字段照常更新。
+        architectures 由 Docker Hub 同步维护，更新请求中的该字段会被忽略。
       parameters:
       - description: id
         in: path
